@@ -1,0 +1,4 @@
+/target
+*.log
+src/bin/scratch.rs
+scratch.sh
