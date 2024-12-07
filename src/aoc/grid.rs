@@ -79,7 +79,12 @@ impl Direction {
     }
 }
 
+pub type Step = [Direction];
+
 impl<'a, T: Index<usize>> GridCell<'a, T> {
+    pub fn value(&self) -> &T::Output {
+        self.grid.value_at_unchecked(self.x, self.y)
+    }
     pub fn up(&self) -> Option<Self> {
         if self.y == 0 {
             None
@@ -113,8 +118,15 @@ impl<'a, T: Index<usize>> GridCell<'a, T> {
         }
     }
 
-    pub fn value(&self) -> &T::Output {
-        self.grid.value_at_unchecked(self.x, self.y)
+    pub fn step(&self, step: &Step) -> Option<Self> {
+        // let mut cell = *self;
+        // for direction in step {
+        //     cell = cell.go(direction)?;
+        // }
+        // Some(cell)
+
+        step.iter()
+            .try_fold(*self, |cell, direction| cell.go(direction))
     }
 }
 
