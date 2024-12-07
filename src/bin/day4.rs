@@ -31,12 +31,12 @@ mod part1 {
             &[D::Down, D::Right],
         ];
 
-        for x_cell in grid.iter().filter(|&c| *c == 'X') {
+        for x_cell in grid.iter().filter(|&c| *c.value() == 'X') {
             'directions: for step in STEPS {
                 let mut cell = x_cell;
                 for xmas in ['M', 'A', 'S'] {
                     if let Some(c) = cell.step(step) {
-                        if *c != xmas {
+                        if *c.value() != xmas {
                             continue 'directions;
                         }
                         cell = c;
@@ -82,12 +82,12 @@ mod part2 {
         static DR: &Step = &[D::Down, D::Right];
 
         grid.iter()
-            .filter(|&cell| *cell == 'A')
+            .filter(|&cell| *cell.value() == 'A')
             .filter_map(|cell| -> Option<()> {
-                let ul = *cell.step(UL)?;
-                let ur = *cell.step(UR)?;
-                let dl = *cell.step(DL)?;
-                let dr = *cell.step(DR)?;
+                let ul = *cell.step(UL)?.value();
+                let ur = *cell.step(UR)?.value();
+                let dl = *cell.step(DL)?.value();
+                let dr = *cell.step(DR)?.value();
 
                 match (ul, dr) {
                     ('M', 'S') | ('S', 'M') => match (ur, dl) {
