@@ -1,11 +1,18 @@
 use aoc2024::aoc;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-struct Mul(usize, usize);
+enum Instruction {
+    Mul(usize, usize),
+    Do,
+    Dont,
+}
 
-impl Mul {
-    pub fn get(&self) -> usize {
-        self.0 * self.1
+impl Instruction {
+    pub fn value(&self) -> usize {
+        match &self {
+            Instruction::Mul(a, b) => a * b,
+            _ => 0,
+        }
     }
 }
 
@@ -15,7 +22,7 @@ mod parse {
     use nom::multi::{fold_many0, many_till};
     use nom::sequence::{preceded, separated_pair, terminated};
 
-    use super::Mul;
+    use super::Instruction;
 
     fn parse_mul_num(s: &str) -> nom::IResult<&str, usize> {
         nom::combinator::map_res(
@@ -24,7 +31,7 @@ mod parse {
         )(s)
     }
 
-    pub fn parse_mul(s: &str) -> nom::IResult<&str, Mul> {
+    pub fn parse_mul(s: &str) -> nom::IResult<&str, Instruction> {
         preceded(
             tag("mul("),
             terminated(
@@ -32,7 +39,7 @@ mod parse {
                 char(')'),
             ),
         )(s)
-        .map(|(s, (a, b))| (s, Mul(a, b)))
+        .map(|(s, (a, b))| (s, Instruction::Mul(a, b)))
         // tuple((
         //     tag("mul("),
         //     parse_mul_num,
@@ -43,7 +50,7 @@ mod parse {
         // .map(|(s, (_, a, _, b, _))| (s, Mul(a, b)))
     }
 
-    pub fn parse_muls(s: &str) -> nom::IResult<&str, Vec<Mul>> {
+    pub fn parse_instructions(s: &str) -> nom::IResult<&str, Vec<Instruction>> {
         fold_many0(
             many_till(anychar, parse_mul),
             Vec::new,
@@ -58,12 +65,12 @@ mod parse {
 mod part1 {
     use super::*;
 
-    fn parse_input(s: &str) -> Vec<Mul> {
-        parse::parse_muls(s).unwrap().1
+    fn parse_input(s: &str) -> Vec<Instruction> {
+        parse::parse_instructions(s).unwrap().1
     }
 
     pub fn calculate(s: &str) -> usize {
-        parse_input(s).iter().map(Mul::get).sum()
+        parse_input(s).iter().map(Instruction::value).sum()
     }
 
     #[cfg(test)]
@@ -92,7 +99,10 @@ mod test {
 
     #[test]
     fn test_parse_mul() {
-        assert_eq!(parse::parse_mul("mul(12,240)"), Ok(("", Mul(12, 240))));
+        assert_eq!(
+            parse::parse_mul("mul(12,240)"),
+            Ok(("", Instruction::Mul(12, 240)))
+        );
         assert!(parse::parse_mul("mul (1,1)").is_err());
     }
 }
