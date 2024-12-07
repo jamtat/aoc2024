@@ -17,8 +17,10 @@ impl Instruction {
 }
 
 mod parse {
+    use nom::branch::alt;
     use nom::bytes::complete::{tag, take_while_m_n};
     use nom::character::complete::{anychar, char};
+    use nom::combinator::map;
     use nom::multi::{fold_many0, many_till};
     use nom::sequence::{preceded, separated_pair, terminated};
 
@@ -50,9 +52,21 @@ mod parse {
         // .map(|(s, (_, a, _, b, _))| (s, Mul(a, b)))
     }
 
+    pub fn parse_do(s: &str) -> nom::IResult<&str, Instruction> {
+        map(tag("do()"), |_| Instruction::Do)(s)
+    }
+
+    pub fn parse_dont(s: &str) -> nom::IResult<&str, Instruction> {
+        map(tag("don't()"), |_| Instruction::Dont)(s)
+    }
+
+    pub fn parse_instruction(s: &str) -> nom::IResult<&str, Instruction> {
+        alt((parse_mul, parse_do, parse_dont))(s)
+    }
+
     pub fn parse_instructions(s: &str) -> nom::IResult<&str, Vec<Instruction>> {
         fold_many0(
-            many_till(anychar, parse_mul),
+            many_till(anychar, parse_instruction),
             Vec::new,
             |mut acc: Vec<_>, (_, mul)| {
                 acc.push(mul);
@@ -62,12 +76,12 @@ mod parse {
     }
 }
 
+fn parse_input(s: &str) -> Vec<Instruction> {
+    parse::parse_instructions(s).unwrap().1
+}
+
 mod part1 {
     use super::*;
-
-    fn parse_input(s: &str) -> Vec<Instruction> {
-        parse::parse_instructions(s).unwrap().1
-    }
 
     pub fn calculate(s: &str) -> usize {
         parse_input(s).iter().map(Instruction::value).sum()
@@ -79,9 +93,58 @@ mod part1 {
 
         #[test]
         fn test_example() {
-            let input = aoc::example::example_string("day3.txt");
+            let input = aoc::example::example_string("day3_1.txt");
 
             assert_eq!(calculate(&input), 161);
+        }
+    }
+}
+
+mod part2 {
+    use super::*;
+
+    pub fn calculate(s: &str) -> usize {
+        parse_input(s)
+            .into_iter()
+            .fold((0, true), |(total, enabled), instruction| {
+                let enabled = match instruction {
+                    Instruction::Mul(_, _) => enabled,
+                    Instruction::Do => true,
+                    Instruction::Dont => false,
+                };
+
+                (
+                    total + if enabled { instruction.value() } else { 0 },
+                    enabled,
+                )
+            })
+            .0
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::*;
+
+        #[test]
+        fn test_example() {
+            let input = aoc::example::example_string("day3_2.txt");
+
+            assert_eq!(calculate(&input), 48);
+        }
+
+        #[test]
+        fn test_parse() {
+            assert_eq!(
+                parse_input(&aoc::example::example_string("day3_2.txt")),
+                vec![
+                    Instruction::Mul(2, 4),
+                    Instruction::Dont,
+                    Instruction::Mul(5, 5),
+                    Instruction::Mul(11, 8),
+                    Instruction::Do,
+                    Instruction::Mul(8, 5),
+                ]
+            );
         }
     }
 }
@@ -91,6 +154,7 @@ fn main() {
     let input = cli.input_string();
 
     println!("Part 1: {}", part1::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input));
 }
 
 #[cfg(test)]
