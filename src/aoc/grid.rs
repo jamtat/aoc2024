@@ -51,6 +51,10 @@ impl Point {
             Direction::Right => Some(self.right()),
         }
     }
+
+    pub fn manhattan_distance(&self, other: &Point) -> usize {
+        self.x.abs_diff(other.x) + self.y.abs_diff(other.y)
+    }
 }
 
 impl Display for Point {
