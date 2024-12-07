@@ -39,7 +39,7 @@ mod test {
 
     #[test]
     fn test_chunks() {
-        let v = vec![0, 1, 2, 3, 4];
+        let v = [0, 1, 2, 3, 4];
         let mut cs = arr_chunks(v.iter());
         assert_eq!(cs.next(), Some([&0, &1]));
         assert_eq!(cs.next(), Some([&2, &3]));
