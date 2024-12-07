@@ -21,14 +21,14 @@ mod part1 {
         let mut count = 0;
 
         static STEPS: &[&Step] = &[
-            &[D::UP],
-            &[D::DOWN],
-            &[D::LEFT],
-            &[D::RIGHT],
-            &[D::UP, D::LEFT],
-            &[D::UP, D::RIGHT],
-            &[D::DOWN, D::LEFT],
-            &[D::DOWN, D::RIGHT],
+            &[D::Up],
+            &[D::Down],
+            &[D::Left],
+            &[D::Right],
+            &[D::Up, D::Left],
+            &[D::Up, D::Right],
+            &[D::Down, D::Left],
+            &[D::Down, D::Right],
         ];
 
         for x_cell in grid.iter().filter(|&c| *c == 'X') {
@@ -76,10 +76,10 @@ mod part2 {
                 M.S
 
         */
-        static UL: &Step = &[D::UP, D::LEFT];
-        static UR: &Step = &[D::UP, D::RIGHT];
-        static DL: &Step = &[D::DOWN, D::LEFT];
-        static DR: &Step = &[D::DOWN, D::RIGHT];
+        static UL: &Step = &[D::Up, D::Left];
+        static UR: &Step = &[D::Up, D::Right];
+        static DL: &Step = &[D::Down, D::Left];
+        static DR: &Step = &[D::Down, D::Right];
 
         grid.iter()
             .filter(|&cell| *cell == 'A')

@@ -57,25 +57,39 @@ pub struct GridCell<'a, T: Index<usize>> {
     pub y: usize,
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum Direction {
-    UP,
-    DOWN,
-    LEFT,
-    RIGHT,
+    Up,
+    Down,
+    Left,
+    Right,
 }
 
 impl Direction {
-    pub fn all() -> &'static [Direction] {
-        &[
-            Direction::UP,
-            Direction::DOWN,
-            Direction::LEFT,
-            Direction::RIGHT,
-        ]
+    pub fn all() -> &'static [Self] {
+        &[Self::Up, Self::Down, Self::Left, Self::Right]
     }
 
     pub fn from<'a, T: Index<usize>>(&self, cell: &GridCell<'a, T>) -> Option<GridCell<'a, T>> {
         cell.go(self)
+    }
+
+    pub fn turn_right(&self) -> Self {
+        match self {
+            Self::Up => Self::Right,
+            Self::Right => Self::Down,
+            Self::Down => Self::Left,
+            Self::Left => Self::Up,
+        }
+    }
+
+    pub fn turn_left(&self) -> Self {
+        match self {
+            Self::Up => Self::Left,
+            Self::Left => Self::Down,
+            Self::Down => Self::Right,
+            Self::Right => Self::Up,
+        }
     }
 }
 
@@ -111,10 +125,10 @@ impl<'a, T: Index<usize>> GridCell<'a, T> {
 
     pub fn go(&self, direction: &Direction) -> Option<Self> {
         match direction {
-            Direction::UP => self.up(),
-            Direction::DOWN => self.down(),
-            Direction::LEFT => self.left(),
-            Direction::RIGHT => self.right(),
+            Direction::Up => self.up(),
+            Direction::Down => self.down(),
+            Direction::Left => self.left(),
+            Direction::Right => self.right(),
         }
     }
 
