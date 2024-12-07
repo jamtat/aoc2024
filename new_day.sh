@@ -27,7 +27,7 @@ mod part1 {
         }
     }
 }
-
+/*
 mod part2 {
     use super::*;
 
@@ -46,7 +46,7 @@ mod part2 {
         }
     }
 }
-
+*/
 fn main() {
     let cli = aoc::cli::parse();
 
