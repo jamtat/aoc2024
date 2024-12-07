@@ -5,25 +5,44 @@ use aoc2024::aoc;
 struct Report(Vec<isize>);
 
 impl Report {
-    pub fn is_safe(&self) -> bool {
-        let diffs = self.0.iter().zip(&self.0[1..]).map(|(a, b)| a - b);
+    fn pairs(&self) -> impl Iterator<Item = (&isize, &isize)> + '_ {
+        self.0.iter().zip(&self.0[1..]).to_owned()
+    }
 
+    fn diffs(&self) -> impl Iterator<Item = isize> + '_ {
+        self.pairs().map(|(a, b)| a - b)
+    }
+
+    pub fn diff_safe(diff: isize, last_diff: Option<isize>) -> bool {
+        (1..=3).contains(&diff.abs())
+            && last_diff
+                .map(|l| l.signum() == diff.signum())
+                .unwrap_or(true)
+    }
+
+    pub fn is_safe(&self) -> bool {
         let mut last: Option<isize> = None;
 
-        for d in diffs {
-            if !(1..=3).contains(&d.abs()) {
+        for d in self.diffs() {
+            if !Self::diff_safe(d, last) {
                 return false;
-            }
-
-            if let Some(last) = last {
-                if last.signum() != d.signum() {
-                    return false;
-                }
             }
             last = Some(d);
         }
 
         true
+    }
+
+    pub fn with_one_dropped(&self) -> impl Iterator<Item = Report> + '_ {
+        (0..self.0.len()).map(|i| {
+            Report(
+                self.0[..i]
+                    .iter()
+                    .chain(self.0[i + 1..].iter())
+                    .cloned()
+                    .collect(),
+            )
+        })
     }
 }
 
@@ -54,12 +73,12 @@ mod test {
     }
 }
 
-mod part1 {
-    use super::Report;
+fn parse_input(input: &str) -> Vec<Report> {
+    input.lines().map(|s| s.parse().unwrap()).collect()
+}
 
-    fn parse_input(input: &str) -> Vec<Report> {
-        input.lines().map(|s| s.parse().unwrap()).collect()
-    }
+mod part1 {
+    use super::*;
 
     pub fn calculate(input: &str) -> usize {
         parse_input(input)
@@ -70,8 +89,7 @@ mod part1 {
 
     #[cfg(test)]
     mod test {
-        use super::calculate;
-        use aoc2024::aoc;
+        use super::*;
 
         #[test]
         fn test_example() {
@@ -82,9 +100,33 @@ mod part1 {
     }
 }
 
+mod part2 {
+    use super::*;
+
+    pub fn calculate(input: &str) -> usize {
+        parse_input(input)
+            .into_iter()
+            .filter(|r| r.is_safe() || r.with_one_dropped().any(|r| r.is_safe()))
+            .count()
+    }
+
+    #[cfg(test)]
+    mod test {
+        use super::*;
+
+        #[test]
+        fn test_example() {
+            let input = aoc::example::example_string("day2.txt");
+
+            assert_eq!(calculate(&input), 4);
+        }
+    }
+}
+
 fn main() {
     let cli = aoc::cli::parse();
     let input = cli.input_string();
 
     println!("Part 1: {}", part1::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input));
 }
