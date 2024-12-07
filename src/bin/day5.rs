@@ -102,39 +102,43 @@ mod part2 {
             println!("Update already valid! {out:?}");
             return None;
         }
-        while !update_valid(&out, rules_after) {
-            for i in 0..l - 1 {
-                let mut update_idx: Option<usize> = None;
-                let page = out[i];
-                let Some(rules) = rules_after.get(&page) else {
-                    #[cfg(test)]
-                    println!("No rules found for {page}");
-                    continue;
-                };
-                #[cfg(test)]
-                println!("Checking for swaps for {page} at {i}");
 
-                for j in i + 1..l {
-                    let pj = out[j];
+        let mut i = 0;
+
+        while i < l - 1 {
+            let mut update_idx: Option<usize> = None;
+            let page = out[i];
+            let Some(rules) = rules_after.get(&page) else {
+                #[cfg(test)]
+                println!("No rules found for {page}");
+                i += 1;
+                continue;
+            };
+            #[cfg(test)]
+            println!("Checking for swaps for {page} at {i}");
+
+            for j in i + 1..l {
+                let pj = out[j];
+                #[cfg(test)]
+                println!("  Checking for swap against {pj} at j");
+                if rules.contains(&pj) {
                     #[cfg(test)]
-                    println!("  Checking for swap against {pj} at j");
-                    if rules.contains(&pj) {
-                        #[cfg(test)]
-                        println!(
-                            "    {} cannot have {} after, setting swap to {}",
-                            page, pj, j
-                        );
-                        update_idx = Some(j);
-                    }
+                    println!(
+                        "    {} cannot have {} after, setting swap to {}",
+                        page, pj, j
+                    );
+                    update_idx = Some(j);
                 }
-                if let Some(update_idx) = update_idx {
-                    #[cfg(test)]
-                    println!("  Moving {page} at {i} to {update_idx}, before: {out:?}");
-                    out.remove(i);
-                    out.insert(update_idx, page);
-                    #[cfg(test)]
-                    println!("  After {out:?}")
-                }
+            }
+            if let Some(update_idx) = update_idx {
+                #[cfg(test)]
+                println!("  Moving {page} at {i} to {update_idx}, before: {out:?}");
+                out.remove(i);
+                out.insert(update_idx, page);
+                #[cfg(test)]
+                println!("  After {out:?}");
+            } else {
+                i += 1
             }
         }
 
@@ -176,5 +180,5 @@ fn main() {
     let input = parse_input(&input);
 
     println!("Part 1: {}", part1::calculate(&input));
-    println!("Part 2: {}", part2::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input)); // 4598
 }
