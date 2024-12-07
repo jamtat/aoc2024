@@ -13,13 +13,13 @@ pub struct Cli {
 
 impl Cli {
     pub fn line_reader(&self) -> impl Iterator<Item = String> + '_ {
-        let f = File::open(&self.input_file()).unwrap();
+        let f = File::open(self.input_file()).unwrap();
 
         BufReader::new(f).lines().map(|l| l.unwrap())
     }
 
     pub fn input_string(&self) -> String {
-        read_to_string(&self.input_file()).unwrap()
+        read_to_string(self.input_file()).unwrap()
     }
 
     pub fn input_file(&self) -> std::path::PathBuf {
@@ -29,7 +29,7 @@ impl Cli {
             let day_name = env::args()
                 .last()
                 .unwrap()
-                .rsplit_once("/")
+                .rsplit_once('/')
                 .unwrap()
                 .1
                 .to_owned();
