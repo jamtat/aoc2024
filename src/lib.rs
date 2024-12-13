@@ -1,4 +1,5 @@
 pub mod aoc;
+pub mod point2d;
 pub mod quant;
 
 pub struct IntoArrayChunks<I, const N: usize>
