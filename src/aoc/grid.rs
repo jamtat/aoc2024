@@ -113,14 +113,14 @@ impl<T: Index<usize>> Grid<T> {
 
     // Used for indexing as well
     pub fn cell_at(&self, x: usize, y: usize) -> Option<GridCell<'_, T>> {
-        self.in_bounds(x, y).then(|| GridCell { grid: self, x, y })
+        self.in_bounds(x, y).then_some(GridCell { grid: self, x, y })
     }
 
     pub fn cell_at_point(&self, point: &Point) -> Option<GridCell<'_, T>> {
         self.cell_at(point.x, point.y)
     }
 
-    pub fn value_at<'a>(&'a self, x: usize, y: usize) -> Option<Ref<'a, T::Output>> {
+    pub fn value_at(&self, x: usize, y: usize) -> Option<Ref<'_, T::Output>> {
         self.in_bounds(x, y)
             .then(|| Ref::map(self.items.borrow(), |items| &items[y * self.width + x]))
     }
@@ -167,7 +167,7 @@ impl<'a, T: Index<usize>> Iterator for GridIter<'a, T> {
 }
 
 impl<T: IndexMut<usize>> Grid<T> {
-    pub fn value_at_mut<'a>(&'a self, x: usize, y: usize) -> Option<RefMut<'a, T::Output>> {
+    pub fn value_at_mut(&self, x: usize, y: usize) -> Option<RefMut<'_, T::Output>> {
         self.in_bounds(x, y).then(|| {
             RefMut::map(self.items.borrow_mut(), |items| {
                 &mut items[y * self.width + x]

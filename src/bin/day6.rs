@@ -101,8 +101,7 @@ fn walk(map: &Map, start: &Point, direction: &Direction) -> Option<HashSet<Point
         visited.insert((loc, direction));
         let Some(cell) = map
             .cell_at_point(&loc)
-            .map(|cell| cell.go(&direction))
-            .flatten()
+            .and_then(|cell| cell.go(&direction))
         else {
             break;
         };

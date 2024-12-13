@@ -104,7 +104,7 @@ mod part2 {
                 }
             }
         }
-        antinodes.into_iter().count()
+        antinodes.len()
     }
 
     #[cfg(test)]

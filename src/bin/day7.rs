@@ -36,8 +36,7 @@ fn evaluate<'a>(args: &'a [usize], ops: &'static [Op]) -> Box<dyn Iterator<Item 
         [x] => Box::new(iter::once(*x)),
         [head @ .., x] => Box::new(
             evaluate(head, ops)
-                .map(move |n| ops.iter().map(move |op| op(n, *x)))
-                .flatten(),
+                .flat_map(move |n| ops.iter().map(move |op| op(n, *x))),
         ),
     }
 }
