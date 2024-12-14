@@ -15,7 +15,7 @@ enum Tile {
 }
 
 impl Tile {
-    pub fn to_char(&self) -> char {
+    pub const fn as_char(&self) -> char {
         match self {
             Self::Empty => '.',
             Self::Obstacle => '#',
@@ -34,10 +34,6 @@ impl Tile {
 
     pub fn is_obstacle(&self) -> bool {
         matches!(self, Self::Obstacle)
-    }
-
-    pub fn is_empty(&self) -> bool {
-        matches!(self, Self::Empty)
     }
 
     pub fn from_char(c: char) -> Option<Self> {
@@ -62,7 +58,7 @@ impl Tile {
 
 impl Display for Tile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_char())
+        write!(f, "{}", self.as_char())
     }
 }
 
@@ -99,10 +95,7 @@ fn walk(map: &Map, start: &Point, direction: &Direction) -> Option<HashSet<Point
 
     while map.in_bounds_point(&loc) {
         visited.insert((loc, direction));
-        let Some(cell) = map
-            .cell_at_point(&loc)
-            .and_then(|cell| cell.go(&direction))
-        else {
+        let Some(cell) = map.cell_at_point(&loc).and_then(|cell| cell.go(&direction)) else {
             break;
         };
 

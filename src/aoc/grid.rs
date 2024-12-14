@@ -103,6 +103,10 @@ impl<T: Index<usize>> Grid<T> {
         self.width * self.height
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.width == 0 || self.height == 0
+    }
+
     pub fn in_bounds(&self, x: usize, y: usize) -> bool {
         x < self.width && y < self.height
     }
@@ -113,7 +117,8 @@ impl<T: Index<usize>> Grid<T> {
 
     // Used for indexing as well
     pub fn cell_at(&self, x: usize, y: usize) -> Option<GridCell<'_, T>> {
-        self.in_bounds(x, y).then_some(GridCell { grid: self, x, y })
+        self.in_bounds(x, y)
+            .then_some(GridCell { grid: self, x, y })
     }
 
     pub fn cell_at_point(&self, point: &Point) -> Option<GridCell<'_, T>> {

@@ -117,7 +117,7 @@ mod part2 {
             #[cfg(test)]
             println!("Checking for swaps for {page} at {i}");
 
-            for j in i + 1..l {
+            for j in i + 1..out.len() {
                 let pj = out[j];
                 #[cfg(test)]
                 println!("  Checking for swap against {pj} at j");
