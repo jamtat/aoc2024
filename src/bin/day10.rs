@@ -1,16 +1,14 @@
-use aoc::grid::{Grid, GridCell};
+use aoc::grid::{Direction, Grid, GridCell, Point};
 use aoc2024::aoc;
 use std::collections::{HashSet, VecDeque};
 
 type Map = Grid<Vec<u8>>;
+type MapCell<'a> = GridCell<'a, Vec<u8>>;
 
 mod part1 {
-
-    use aoc::grid::{Direction, Point};
-
     use super::*;
 
-    fn trailheads(start: &GridCell<'_, Vec<u8>>) -> usize {
+    fn trailheads(start: &MapCell) -> usize {
         let mut checked = HashSet::<Point>::new();
         let mut queue = VecDeque::<GridCell<'_, _>>::new();
         queue.push_back(*start);
@@ -41,10 +39,8 @@ mod part1 {
         count
     }
 
-    pub fn calculate(input: &str) -> usize {
-        let grid = input.parse::<Map>().unwrap();
-
-        grid.iter()
+    pub fn calculate(map: &Map) -> usize {
+        map.iter()
             .filter(|cell| *cell.value() == 0)
             .map(|cell| trailheads(&cell))
             .sum()
@@ -57,16 +53,44 @@ mod part1 {
         #[test]
         fn test_example() {
             let input = aoc::example::example_string("day10.txt");
-            assert_eq!(calculate(&input), 36);
+            assert_eq!(calculate(&input.parse().unwrap()), 36);
         }
     }
 }
-/*
+
 mod part2 {
     use super::*;
 
-    pub fn calculate(input: &str) -> usize {
-        0
+    fn rating(start: &MapCell) -> usize {
+        let mut queue = VecDeque::<GridCell<'_, _>>::new();
+        queue.push_back(*start);
+        let mut rating = 0;
+
+        while let Some(cell) = queue.pop_front() {
+            let value = *cell.value();
+            for cell in Direction::all()
+                .iter()
+                .filter_map(|direction| cell.go(direction))
+            {
+                let v = *cell.value();
+                if v == value + 1 {
+                    if v == 9 {
+                        rating += 1;
+                    } else {
+                        queue.push_back(cell);
+                    }
+                }
+            }
+        }
+
+        rating
+    }
+
+    pub fn calculate(map: &Map) -> usize {
+        map.iter()
+            .filter(|cell| *cell.value() == 0)
+            .map(|cell| rating(&cell))
+            .sum()
     }
 
     #[cfg(test)]
@@ -76,16 +100,16 @@ mod part2 {
         #[test]
         fn test_example() {
             let input = aoc::example::example_string("day10.txt");
-            assert_eq!(calculate(&input), 0);
+            assert_eq!(calculate(&input.parse().unwrap()), 81);
         }
     }
 }
-*/
+
 fn main() {
     let cli = aoc::cli::parse();
 
     let input = cli.input_string();
-
-    println!("Part 1: {}", part1::calculate(&input));
-    // println!("Part 2: {}", part2::calculate(&input));
+    let map: Map = input.parse().expect("Could not parse map");
+    println!("Part 1: {}", part1::calculate(&map));
+    println!("Part 2: {}", part2::calculate(&map));
 }
