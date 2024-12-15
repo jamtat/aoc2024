@@ -2,6 +2,7 @@ use std::{
     cell::{Ref, RefCell, RefMut},
     fmt::{Display, Write},
     ops::{Index, IndexMut},
+    str::FromStr,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -135,6 +136,30 @@ impl<T: Index<usize>> Grid<T> {
     }
 }
 
+impl<U> FromStr for Grid<Vec<U>>
+where
+    U: FromStr,
+{
+    type Err = <U as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let width = s.lines().next().map(str::len).unwrap_or(0);
+        let height = s.lines().count();
+
+        let items = s
+            .lines()
+            .flat_map(|line| line.split_inclusive(|_| true))
+            .map(|s| s.parse::<U>())
+            .collect::<Result<Vec<U>, _>>()?;
+
+        Ok(Grid {
+            width,
+            height,
+            items: RefCell::new(items),
+        })
+    }
+}
+
 impl<'a, T: Index<usize>> IntoIterator for &'a Grid<T> {
     type Item = GridCell<'a, T>;
 
@@ -205,7 +230,11 @@ pub struct GridCell<'a, T: Index<usize>> {
     pub y: usize,
 }
 
-impl<'a, T: Index<usize>> GridCell<'a, T> {
+impl<T: Index<usize>> GridCell<'_, T> {
+    pub fn grid(&self) -> &Grid<T> {
+        self.grid
+    }
+
     pub fn value(&self) -> Ref<'_, T::Output> {
         self.grid.value_at(self.x, self.y).unwrap()
     }
@@ -259,18 +288,18 @@ impl<'a, T: Index<usize>> GridCell<'a, T> {
     }
 }
 
-impl<'a, T: IndexMut<usize>> GridCell<'a, T> {
+impl<T: IndexMut<usize>> GridCell<'_, T> {
     pub fn value_mut(&mut self) -> RefMut<'_, T::Output> {
         self.grid.value_at_mut(self.x, self.y).unwrap()
     }
 }
 
-impl<'a, T: Index<usize>> Clone for GridCell<'a, T> {
+impl<T: Index<usize>> Clone for GridCell<'_, T> {
     fn clone(&self) -> Self {
         *self
     }
 }
-impl<'a, T: Index<usize>> Copy for GridCell<'a, T> {}
+impl<T: Index<usize>> Copy for GridCell<'_, T> {}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Direction {
@@ -281,7 +310,7 @@ pub enum Direction {
 }
 
 impl Direction {
-    pub fn all() -> &'static [Self] {
+    pub const fn all() -> &'static [Self] {
         &[Self::Up, Self::Down, Self::Left, Self::Right]
     }
 
