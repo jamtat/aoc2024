@@ -6,7 +6,7 @@ use std::{
 
 use aoc2024::aoc;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct EntryDisk(Vec<Entry>);
 
 impl EntryDisk {
@@ -29,26 +29,91 @@ impl EntryDisk {
         self[idx].is_free()
     }
 
-    pub fn pack_whole_files(&mut self) -> EntryDisk {
-        let mut out = vec![];
-
+    pub fn pack_whole_files(&mut self) {
         let mut i = 0;
 
-        for i in 0..self.len() {
-            let i_entry = &self[i];
-            if !self.is_free(i) {
-                out.push(i_entry.clone());
-            }
-            let free_size = self[i].size();
-            for j in (i..self.len()).rev() {
-                let entry = &self[j];
-                if !entry.is_free() || entry.size() > free_size {
+        while i < self.len() {
+            let free_size = match self[i] {
+                Entry::Free(size) if size > 0 => size,
+                _ => {
+                    i += 1;
                     continue;
                 }
-                entry.set_size(0);
+            };
+            #[cfg(test)]
+            {
+                println!("{}", self);
+                println!("Trying to replace free size={} at index {}", free_size, i);
+            }
+            for j in (i + 1..self.len()).rev() {
+                match self[j] {
+                    Entry::File { id, size } if 0 < size && size <= free_size => {
+                        self[i].set_size(free_size - size);
+                        let to_insert = self[j];
+                        self[j] = Entry::free(size);
+                        self.0.insert(i, to_insert);
+                        #[cfg(test)]
+                        println!("Inserting id {} of size {}", id, size);
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            i += 1;
+        }
+    }
+
+    pub fn _compact_representation(&self) -> EntryDisk {
+        // Compress all the consecutive free blocks, and remove entries of zero size
+        let mut out = EntryDisk::default();
+        let mut last_entry: Option<Entry> = None;
+
+        for &entry in &self.0 {
+            if entry.size() == 0 {
+                continue;
+            }
+
+            if let Some(last) = last_entry {
+                match (last, entry) {
+                    (
+                        Entry::File {
+                            id: last_id,
+                            size: last_size,
+                        },
+                        Entry::File { id, size },
+                    ) => {
+                        if last_id == id {
+                            last_entry = Some(Entry::file(id, size + last_size))
+                        } else {
+                            out.0.push(last);
+                            last_entry = Some(entry);
+                        }
+                    }
+                    (Entry::File { .. }, Entry::Free(_)) | (Entry::Free(_), Entry::File { .. }) => {
+                        out.0.push(last);
+                        last_entry = Some(entry);
+                    }
+                    (Entry::Free(s1), Entry::Free(s2)) => last_entry = Some(Entry::free(s1 + s2)),
+                }
+            } else {
+                last_entry = Some(entry)
             }
         }
-        EntryDisk(out)
+
+        if let Some(last_entry) = last_entry {
+            out.0.push(last_entry);
+        }
+
+        out
+    }
+}
+
+impl Display for EntryDisk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        for entry in &self.0 {
+            write!(f, "{} ", entry)?;
+        }
+        Ok(())
     }
 }
 
@@ -103,6 +168,24 @@ enum Entry {
     Free(usize),
 }
 
+impl Display for Entry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Entry::File { id, size } => {
+                for _ in 0..*size {
+                    write!(f, "{}", id)?;
+                }
+            }
+            Entry::Free(size) => {
+                for _ in 0..*size {
+                    f.write_char('.')?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Entry {
     pub fn file(id: usize, size: usize) -> Self {
         Self::File { id, size }
@@ -120,6 +203,12 @@ impl Entry {
         match self {
             Entry::File { .. } => false,
             Entry::Free(size) => *size > 0,
+        }
+    }
+    pub fn is_entry(&self) -> bool {
+        match self {
+            Entry::File { id: _, size } => *size > 0,
+            Entry::Free(_) => false,
         }
     }
     pub fn set_size(&mut self, size: usize) {
@@ -289,7 +378,7 @@ mod part2 {
     use super::*;
 
     pub fn calculate(input: &str) -> usize {
-        let mut disk: EntryDisk = input.parse().unwrap();
+        let mut disk: EntryDisk = input.parse::<EntryDisk>().unwrap();
         disk.pack_whole_files();
         disk.checksum()
     }
@@ -312,5 +401,5 @@ fn main() {
     let input = cli.input_string();
 
     println!("Part 1: {}", part1::calculate(&input));
-    // println!("Part 2: {}", part2::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input));
 }
