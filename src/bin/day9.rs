@@ -25,10 +25,6 @@ impl EntryDisk {
         total
     }
 
-    pub fn is_free(&self, idx: usize) -> bool {
-        self[idx].is_free()
-    }
-
     pub fn pack_whole_files(&mut self) {
         let mut i = 0;
 
@@ -47,13 +43,11 @@ impl EntryDisk {
             }
             for j in (i + 1..self.len()).rev() {
                 match self[j] {
-                    Entry::File { id, size } if 0 < size && size <= free_size => {
+                    Entry::File { id: _, size } if 0 < size && size <= free_size => {
                         self[i].set_size(free_size - size);
                         let to_insert = self[j];
                         self[j] = Entry::free(size);
                         self.0.insert(i, to_insert);
-                        #[cfg(test)]
-                        println!("Inserting id {} of size {}", id, size);
                         break;
                     }
                     _ => {}
@@ -197,18 +191,6 @@ impl Entry {
         match self {
             Entry::File { id: _, size } => *size,
             Entry::Free(size) => *size,
-        }
-    }
-    pub fn is_free(&self) -> bool {
-        match self {
-            Entry::File { .. } => false,
-            Entry::Free(size) => *size > 0,
-        }
-    }
-    pub fn is_entry(&self) -> bool {
-        match self {
-            Entry::File { id: _, size } => *size > 0,
-            Entry::Free(_) => false,
         }
     }
     pub fn set_size(&mut self, size: usize) {
