@@ -13,15 +13,6 @@ enum Blink {
     Two(usize, usize),
 }
 
-impl Blink {
-    pub const fn len(&self) -> usize {
-        match self {
-            Blink::One(_) => 1,
-            Blink::Two(_, _) => 2,
-        }
-    }
-}
-
 fn blink(n: usize) -> Blink {
     if n == 0 {
         return Blink::One(1);
@@ -125,6 +116,7 @@ fn main() {
     println!("Part 2: {}", part2::calculate(&input));
 }
 
+#[allow(dead_code)]
 mod slow_but_fun {
     use super::*;
     #[derive(Debug, PartialEq, Eq, Clone)]
