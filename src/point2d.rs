@@ -81,6 +81,17 @@ where
     }
 }
 
+impl<N, T> std::ops::Add<(N, N)> for Point2D<N>
+where
+    N: std::ops::Add<Output = T>,
+{
+    type Output = Point2D<T>;
+
+    fn add(self, rhs: (N, N)) -> Self::Output {
+        self + Point2D::from(rhs)
+    }
+}
+
 impl<N, T> std::ops::Sub for Point2D<N>
 where
     N: std::ops::Sub<Output = T>,
@@ -89,6 +100,17 @@ where
 
     fn sub(self, rhs: Self) -> Self::Output {
         Point2D::new(self.x - rhs.x, self.y - rhs.y)
+    }
+}
+
+impl<N, T> std::ops::Sub<(N, N)> for Point2D<N>
+where
+    N: std::ops::Sub<Output = T>,
+{
+    type Output = Point2D<T>;
+
+    fn sub(self, rhs: (N, N)) -> Self::Output {
+        self - Point2D::from(rhs)
     }
 }
 

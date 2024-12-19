@@ -16,10 +16,10 @@ fn to_point2d(point: &Point) -> Point2Disize {
 
 fn neighbours(point2d: &Point2Disize) -> [Point2Disize; 4] {
     [
-        *point2d + Point2Disize::new(-1, 0),
-        *point2d + Point2Disize::new(1, 0),
-        *point2d + Point2Disize::new(0, -1),
-        *point2d + Point2Disize::new(0, 1),
+        *point2d + (-1, 0),
+        *point2d + (1, 0),
+        *point2d + (0, -1),
+        *point2d + (0, 1),
     ]
 }
 
@@ -41,12 +41,16 @@ impl Region {
         self.points.insert(*point);
     }
 
+    fn points2d(&self) -> impl Iterator<Item = Point2Disize> + '_ {
+        self.points.iter().map(to_point2d)
+    }
+
     pub fn area(&self) -> usize {
         self.points.len()
     }
 
     pub fn perimeter(&self) -> usize {
-        let points2d: HashSet<_> = self.points.iter().map(to_point2d).collect();
+        let points2d: HashSet<_> = self.points2d().collect();
 
         points2d
             .iter()
@@ -55,9 +59,65 @@ impl Region {
             .count()
     }
 
-    pub fn price(&self) -> usize {
-        self.area() * self.perimeter()
+    pub fn sides(&self) -> usize {
+        let points2d: HashSet<_> = self.points2d().collect();
+        let mut vert: Vec<isize> = vec![];
+        let mut horz: Vec<isize> = vec![];
+
+        for &p in points2d.iter() {
+            if !points2d.contains(&(p + (-1, 0))) {
+                horz.push(p.x);
+            }
+            if !points2d.contains(&(p + (1, 0))) {
+                horz.push(p.x + 1);
+            }
+
+            if !points2d.contains(&(p + (0, -1))) {
+                vert.push(p.y);
+            }
+            if !points2d.contains(&(p + (0, 1))) {
+                vert.push(p.y + 1);
+            }
+        }
+
+        let edge_points = points2d.iter().map(|&p| {
+            let mut vert: Vec<isize> = vec![];
+            let mut horz: Vec<isize> = vec![];
+
+            if !points2d.contains(&(p + (-1, 0))) {
+                vert.push(value);
+            }
+            if !points2d.contains(&(p + (1, 0))) {
+                edges.push(p + (1, 0));
+            }
+
+            if !points2d.contains(&(p + (0, -1))) {
+                edges.push(p);
+            }
+            if !points2d.contains(&(p + (0, 1))) {
+                edges.push(p + (1, 0));
+            }
+
+            (vert, horz)
+        });
+
+        // let perimeter_points: HashSet<_> = points2d
+        //     .iter()
+        //     .flat_map(neighbours)
+        //     .filter(|p| !points2d.contains(p))
+        //     .collect();
+
+        // let edge_points = self.
+        // let start = perimeter_points.iter().next().unwrap();
+
+        0
     }
+}
+
+struct Side {
+    horizontal: bool,
+    min: usize,
+    max: usize,
 }
 
 fn regions(garden: &Garden) -> Vec<Region> {
@@ -114,7 +174,7 @@ mod part1 {
         //     );
         // }
 
-        regions.iter().map(Region::price).sum()
+        regions.iter().map(|r| r.area() * r.perimeter()).sum()
     }
 
     #[cfg(test)]
@@ -128,12 +188,14 @@ mod part1 {
         }
     }
 }
-/*
+
 mod part2 {
     use super::*;
 
     pub fn calculate(input: &str) -> usize {
-        0
+        let garden: Garden = input.parse().unwrap();
+        let regions = regions(&garden);
+        regions.iter().map(|r| r.area() * r.sides()).sum()
     }
 
     #[cfg(test)]
@@ -143,16 +205,16 @@ mod part2 {
         #[test]
         fn test_example() {
             let input = aoc::example::example_string("day12.txt");
-            assert_eq!(calculate(&input), 0);
+            assert_eq!(calculate(&input), 1206);
         }
     }
 }
-*/
+
 fn main() {
     let cli = aoc::cli::parse();
 
     let input = cli.input_string();
 
     println!("Part 1: {}", part1::calculate(&input));
-    // println!("Part 2: {}", part2::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input));
 }
