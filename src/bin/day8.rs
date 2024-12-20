@@ -1,6 +1,7 @@
 use aoc2024::{aoc, point2d::Point2D};
 use std::collections::{HashMap, HashSet};
 
+#[allow(clippy::type_complexity)]
 fn parse_input(
     input: &str,
 ) -> (

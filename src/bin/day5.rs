@@ -117,10 +117,11 @@ mod part2 {
             #[cfg(test)]
             println!("Checking for swaps for {page} at {i}");
 
+            #[allow(clippy::needless_range_loop)]
             for j in i + 1..out.len() {
                 let pj = out[j];
                 #[cfg(test)]
-                println!("  Checking for swap against {pj} at j");
+                println!("  Checking for swap against {pj} at {j}");
                 if rules.contains(&pj) {
                     #[cfg(test)]
                     println!(
