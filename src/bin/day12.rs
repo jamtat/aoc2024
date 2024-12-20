@@ -1,11 +1,15 @@
-use std::collections::{HashSet, VecDeque};
+use std::{
+    cmp::Ordering,
+    collections::{HashSet, VecDeque},
+    fmt::Display,
+};
 
 use aoc2024::{
     aoc::{
         self,
         grid::{Direction, Grid, Point},
     },
-    point2d::{Point2D, Point2Disize},
+    point2d::Point2Disize,
 };
 
 type Garden = Grid<Vec<char>>;
@@ -21,6 +25,76 @@ fn neighbours(point2d: &Point2Disize) -> [Point2Disize; 4] {
         *point2d + (0, -1),
         *point2d + (0, 1),
     ]
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Edge {
+    direction: Direction,
+    x: isize,
+    y: isize,
+}
+
+impl Ord for Edge {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.direction.cmp(&other.direction) {
+            Ordering::Equal => {}
+            ord => return ord,
+        }
+        match self.direction {
+            Direction::Up | Direction::Down => {
+                match self.y.cmp(&other.y) {
+                    Ordering::Equal => {}
+                    ord => return ord,
+                }
+                self.x.cmp(&other.x)
+            }
+            Direction::Left | Direction::Right => {
+                match self.x.cmp(&other.x) {
+                    Ordering::Equal => {}
+                    ord => return ord,
+                }
+                self.y.cmp(&other.y)
+            }
+        }
+    }
+}
+
+impl PartialOrd for Edge {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl PartialEq for Edge {
+    fn eq(&self, other: &Self) -> bool {
+        self.direction == other.direction && self.x == other.x && self.y == other.y
+    }
+}
+
+impl Eq for Edge {}
+
+impl Edge {
+    pub fn new(direction: Direction, x: isize, y: isize) -> Self {
+        Self { direction, x, y }
+    }
+
+    pub fn connects(&self, &Self { direction, x, y }: &Self) -> bool {
+        self.direction == direction
+            && match self.direction {
+                Direction::Left | Direction::Right => {
+                    self.x == x && self.y >= y - 1 && self.y <= y + 1
+                }
+                Direction::Up | Direction::Down => {
+                    self.y == y && self.x >= x - 1 && self.x <= x + 1
+                }
+            }
+    }
+}
+
+impl Display for Edge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{},{},{}", self.direction, self.x, self.y)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -61,63 +135,45 @@ impl Region {
 
     pub fn sides(&self) -> usize {
         let points2d: HashSet<_> = self.points2d().collect();
-        let mut vert: Vec<isize> = vec![];
-        let mut horz: Vec<isize> = vec![];
 
-        for &p in points2d.iter() {
-            if !points2d.contains(&(p + (-1, 0))) {
-                horz.push(p.x);
+        let mut edges: Vec<_> = vec![];
+
+        for &p in &points2d {
+            if !points2d.contains(&(p - (1, 0))) {
+                edges.push(Edge::new(Direction::Left, p.x, p.y));
             }
             if !points2d.contains(&(p + (1, 0))) {
-                horz.push(p.x + 1);
+                edges.push(Edge::new(Direction::Right, p.x + 1, p.y));
             }
 
-            if !points2d.contains(&(p + (0, -1))) {
-                vert.push(p.y);
+            if !points2d.contains(&(p - (0, 1))) {
+                edges.push(Edge::new(Direction::Up, p.x, p.y));
             }
             if !points2d.contains(&(p + (0, 1))) {
-                vert.push(p.y + 1);
+                edges.push(Edge::new(Direction::Down, p.x, p.y + 1));
             }
         }
 
-        let edge_points = points2d.iter().map(|&p| {
-            let mut vert: Vec<isize> = vec![];
-            let mut horz: Vec<isize> = vec![];
+        edges.sort();
+        let mut count = 0;
+        let mut last_edge: Option<Edge> = None;
 
-            if !points2d.contains(&(p + (-1, 0))) {
-                vert.push(value);
-            }
-            if !points2d.contains(&(p + (1, 0))) {
-                edges.push(p + (1, 0));
-            }
+        for edge in edges {
+            let Some(le) = last_edge else {
+                last_edge = Some(edge);
+                count = 1;
+                continue;
+            };
 
-            if !points2d.contains(&(p + (0, -1))) {
-                edges.push(p);
-            }
-            if !points2d.contains(&(p + (0, 1))) {
-                edges.push(p + (1, 0));
+            if !edge.connects(&le) {
+                count += 1;
             }
 
-            (vert, horz)
-        });
+            last_edge = Some(edge);
+        }
 
-        // let perimeter_points: HashSet<_> = points2d
-        //     .iter()
-        //     .flat_map(neighbours)
-        //     .filter(|p| !points2d.contains(p))
-        //     .collect();
-
-        // let edge_points = self.
-        // let start = perimeter_points.iter().next().unwrap();
-
-        0
+        count
     }
-}
-
-struct Side {
-    horizontal: bool,
-    min: usize,
-    max: usize,
 }
 
 fn regions(garden: &Garden) -> Vec<Region> {
@@ -164,16 +220,6 @@ mod part1 {
         let garden: Garden = input.parse().unwrap();
         let regions = regions(&garden);
 
-        // for region in &regions {
-        //     println!(
-        //         "A region of {} plants with price {} * {} = {}",
-        //         region.plant,
-        //         region.area(),
-        //         region.perimeter(),
-        //         region.price()
-        //     );
-        // }
-
         regions.iter().map(|r| r.area() * r.perimeter()).sum()
     }
 
@@ -195,6 +241,18 @@ mod part2 {
     pub fn calculate(input: &str) -> usize {
         let garden: Garden = input.parse().unwrap();
         let regions = regions(&garden);
+        #[cfg(test)]
+        {
+            println!();
+            for r in &regions {
+                println!(
+                    "Region {} area of {} and {} sides",
+                    r.plant,
+                    r.area(),
+                    r.sides()
+                );
+            }
+        }
         regions.iter().map(|r| r.area() * r.sides()).sum()
     }
 
@@ -206,6 +264,18 @@ mod part2 {
         fn test_example() {
             let input = aoc::example::example_string("day12.txt");
             assert_eq!(calculate(&input), 1206);
+        }
+
+        #[test]
+        fn test_example2() {
+            let input = aoc::example::example_string("day12_2.txt");
+            assert_eq!(calculate(&input), 368);
+        }
+
+        #[test]
+        fn test_example3() {
+            let input = aoc::example::example_string("day12_3.txt");
+            assert_eq!(calculate(&input), 236);
         }
     }
 }

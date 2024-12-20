@@ -301,7 +301,7 @@ impl<T: Index<usize>> Clone for GridCell<'_, T> {
 }
 impl<T: Index<usize>> Copy for GridCell<'_, T> {}
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Direction {
     Up,
     Down,
@@ -334,6 +334,21 @@ impl Direction {
             Self::Down => Self::Right,
             Self::Right => Self::Up,
         }
+    }
+}
+
+impl Display for Direction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                Direction::Up => "Up",
+                Direction::Down => "Down",
+                Direction::Left => "Left",
+                Direction::Right => "Right",
+            }
+        )
     }
 }
 
