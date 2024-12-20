@@ -2,16 +2,17 @@ use std::fmt::Display;
 
 use aoc2024::aoc;
 
+#[derive(Clone, Copy)]
 struct Button {
-    x: usize,
-    y: usize,
+    x: isize,
+    y: isize,
 }
 
 struct Game {
     a: Button,
     b: Button,
-    prize_x: usize,
-    prize_y: usize,
+    prize_x: isize,
+    prize_y: isize,
 }
 
 impl Display for Game {
@@ -63,7 +64,7 @@ mod parse {
         Ok((s, Button { x, y }))
     }
 
-    fn parse_prize(s: &str) -> nom::IResult<&str, (usize, usize)> {
+    fn parse_prize(s: &str) -> nom::IResult<&str, (isize, isize)> {
         let (s, _) = tag("Prize: X=")(s)?;
         let (s, x) = parse_number(s)?;
         let (s, _) = tag(", Y=")(s)?;
@@ -73,14 +74,13 @@ mod parse {
     }
 }
 
+static A_COST: isize = 3;
+static B_COST: isize = 1;
+
 mod part1 {
     use super::*;
 
-    static A_COST: usize = 3;
-    static B_COST: usize = 1;
-
-    fn min_tokens(game: &Game) -> Option<usize> {
-        let mut min = None;
+    fn min_tokens(game: &Game) -> Option<isize> {
         for a in 0..=100 {
             let x = game.a.x * a;
             let y = game.a.y * a;
@@ -89,14 +89,14 @@ mod part1 {
                 let y = y + game.b.y * b;
 
                 if x == game.prize_x && y == game.prize_y {
-                    min = Some(a * A_COST + b * B_COST)
+                    return Some(a * A_COST + b * B_COST);
                 }
             }
         }
-        min
+        None
     }
 
-    pub fn calculate(input: &str) -> usize {
+    pub fn calculate(input: &str) -> isize {
         let games = parse::parse_input(input);
         #[cfg(test)]
         for game in &games {
@@ -117,31 +117,58 @@ mod part1 {
         }
     }
 }
-/*
+
 mod part2 {
     use super::*;
 
-    pub fn calculate(input: &str) -> usize {
-        0
-    }
+    static OFFSET: isize = 10000000000000;
 
-    #[cfg(test)]
-    mod test {
-        use super::*;
-
-        #[test]
-        fn test_example() {
-            let input = aoc::example::example_string("day13.txt");
-            assert_eq!(calculate(&input), 0);
+    fn solve(
+        Game {
+            a: Button { x: ax, y: ay },
+            b: Button { x: bx, y: by },
+            prize_x: px,
+            prize_y: py,
+        }: &Game,
+    ) -> Option<usize> {
+        // Shamelessly stolen from https://www.youtube.com/watch?v=-5J-DAsWuJc
+        // because I didn't remember systems of linear equations from school
+        let numerator = px * by - py * bx;
+        let denominator = ax * by - ay * bx;
+        if numerator % denominator != 0 {
+            return None;
         }
+        let a_presses = numerator / denominator;
+
+        let numerator = px - ax * a_presses;
+        if numerator % bx != 0 {
+            return None;
+        }
+        let b_presses = numerator / bx;
+        Some((a_presses * A_COST + b_presses * B_COST) as usize)
     }
+
+    pub fn calculate(input: &str) -> usize {
+        parse::parse_input(input)
+            .iter()
+            .map(|game| Game {
+                a: game.a,
+                b: game.b,
+                prize_x: game.prize_x + OFFSET,
+                prize_y: game.prize_y + OFFSET,
+            })
+            .filter_map(|game| solve(&game))
+            .sum()
+    }
+
+    // No example given!!
 }
-*/
+
 fn main() {
     let cli = aoc::cli::parse();
 
     let input = cli.input_string();
 
     println!("Part 1: {}", part1::calculate(&input));
-    // println!("Part 2: {}", part2::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input));
 }
