@@ -2,3 +2,5 @@
 *.log
 src/bin/scratch.rs
 scratch.sh
+doodles/
+.DS_Store

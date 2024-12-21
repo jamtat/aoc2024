@@ -98,6 +98,9 @@ mod parse {
     }
 }
 
+static WIDTH: usize = 101;
+static HEIGHT: usize = 103;
+
 mod part1 {
     use std::collections::HashMap;
 
@@ -133,7 +136,7 @@ mod part1 {
 
     pub fn calculate(input: &str) -> usize {
         let robots = parse::parse_input(input);
-        safety_factor(&robots, 100, 101, 103)
+        safety_factor(&robots, 100, WIDTH, HEIGHT)
     }
 
     #[cfg(test)]
@@ -148,31 +151,56 @@ mod part1 {
         }
     }
 }
-/*
+
 mod part2 {
+    use std::{collections::HashSet, path::PathBuf};
+
+    use aoc::grid::Grid;
+
     use super::*;
 
-    pub fn calculate(input: &str) -> usize {
-        0
+    fn draw(robots: &[Robot]) -> String {
+        let grid = Grid::fill(WIDTH, HEIGHT, ' ');
+
+        for r in robots {
+            *grid
+                .cell_at(r.position.x as usize, r.position.y as usize)
+                .unwrap()
+                .value_mut() = '*';
+        }
+
+        format!("{grid}")
     }
 
-    #[cfg(test)]
-    mod test {
-        use super::*;
+    fn tick(robots: &[Robot]) -> Vec<Robot> {
+        robots.iter().map(|r| r.run(1, WIDTH, HEIGHT)).collect()
+    }
 
-        #[test]
-        fn test_example() {
-            let input = aoc::example::example_string("day14.txt");
-            assert_eq!(calculate(&input), 0);
+    pub fn calculate(input: &str) -> usize {
+        let mut robots = parse::parse_input(input);
+        let output_root = &PathBuf::from("doodles/");
+        let _ = std::fs::create_dir(output_root);
+        let mut i = 0;
+        loop {
+            let filepath = output_root.join(format!("{i}.txt"));
+            let positions: HashSet<_> = robots.iter().map(|r| r.position).collect();
+            if positions.len() == robots.len() {
+                let picture = draw(&robots);
+                let _ = std::fs::write(&filepath, &picture);
+                println!("{picture}");
+                break i;
+            }
+            robots = tick(&robots);
+            i += 1;
         }
     }
 }
-*/
+
 fn main() {
     let cli = aoc::cli::parse();
 
     let input = cli.input_string();
 
     println!("Part 1: {}", part1::calculate(&input));
-    // println!("Part 2: {}", part2::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input));
 }

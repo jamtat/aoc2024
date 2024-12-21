@@ -79,19 +79,6 @@ impl<T: Index<usize>> Grid<T> {
         }
     }
 
-    pub fn fill<U>(width: usize, height: usize, val: U) -> Grid<Vec<U>>
-    where
-        U: Copy,
-    {
-        Grid::new(
-            width,
-            height,
-            std::iter::repeat(val)
-                .take(width * height)
-                .collect::<Vec<U>>(),
-        )
-    }
-
     pub fn width(&self) -> usize {
         self.width
     }
@@ -133,6 +120,21 @@ impl<T: Index<usize>> Grid<T> {
 
     pub fn iter(&self) -> GridIter<'_, T> {
         GridIter::new(self)
+    }
+}
+
+impl<U: Copy> Grid<Vec<U>> {
+    pub fn fill(width: usize, height: usize, val: U) -> Self
+    where
+        U: Copy,
+    {
+        Grid::new(
+            width,
+            height,
+            std::iter::repeat(val)
+                .take(width * height)
+                .collect::<Vec<U>>(),
+        )
     }
 }
 
