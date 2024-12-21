@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::quant::NumConsts;
+use crate::quant::{NumConsts, RemEuclid};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct Point2D<N> {
@@ -20,6 +20,13 @@ where
 impl<N> Point2D<N> {
     pub fn new(x: N, y: N) -> Self {
         Point2D { x, y }
+    }
+
+    pub fn rem_euclid(&self, other: Self) -> Self
+    where
+        N: RemEuclid + Copy,
+    {
+        Self::new(self.x.rem_euclid(other.x), self.y.rem_euclid(other.y))
     }
 }
 
@@ -135,6 +142,17 @@ where
 
     fn div(self, rhs: U) -> Self::Output {
         Point2D::new(self.x / rhs, self.y / rhs)
+    }
+}
+
+impl<N, T> std::ops::Rem for Point2D<N>
+where
+    N: std::ops::Rem<Output = T>,
+{
+    type Output = Point2D<T>;
+
+    fn rem(self, rhs: Self) -> Self::Output {
+        Point2D::new(self.x % rhs.x, self.y % rhs.y)
     }
 }
 

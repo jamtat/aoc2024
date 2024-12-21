@@ -75,3 +75,31 @@ impl_consts!(i128);
 impl_consts!(isize);
 impl_consts!(f32, f);
 impl_consts!(f64, f);
+
+pub trait RemEuclid {
+    fn rem_euclid(self, other: Self) -> Self;
+}
+macro_rules! impl_rem_euclid {
+    ($typ:ty) => {
+        impl RemEuclid for $typ {
+            fn rem_euclid(self, other: Self) -> Self {
+                <$typ>::rem_euclid(self, other)
+            }
+        }
+    };
+}
+
+impl_rem_euclid!(f32);
+impl_rem_euclid!(f64);
+impl_rem_euclid!(u8);
+impl_rem_euclid!(u16);
+impl_rem_euclid!(u32);
+impl_rem_euclid!(u64);
+impl_rem_euclid!(u128);
+impl_rem_euclid!(usize);
+impl_rem_euclid!(i8);
+impl_rem_euclid!(i16);
+impl_rem_euclid!(i32);
+impl_rem_euclid!(i64);
+impl_rem_euclid!(i128);
+impl_rem_euclid!(isize);
