@@ -17,13 +17,13 @@ mod parse {
     }
 
     fn parse_direction(c: char) -> Option<Direction> {
-        match c {
-            '^' => Some(Direction::Up),
-            '>' => Some(Direction::Right),
-            'v' => Some(Direction::Down),
-            '<' => Some(Direction::Left),
-            _ => None,
-        }
+        Some(match c {
+            '^' => Direction::Up,
+            '>' => Direction::Right,
+            'v' => Direction::Down,
+            '<' => Direction::Left,
+            _ => None?,
+        })
     }
 }
 

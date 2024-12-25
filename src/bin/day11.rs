@@ -130,14 +130,13 @@ mod slow_but_fun {
             StoneList::Cons(Box::new(left), Box::new(right))
         }
         pub fn from_slice(stones: &[usize]) -> Option<Self> {
-            match stones {
-                [] => None,
-                [x] => Some(StoneList::Stone(*x)),
-                [x, tail @ ..] => Some(StoneList::cons(
-                    StoneList::Stone(*x),
-                    StoneList::from_slice(tail).unwrap(),
-                )),
-            }
+            Some(match stones {
+                [] => None?,
+                [x] => StoneList::Stone(*x),
+                [x, tail @ ..] => {
+                    StoneList::cons(StoneList::Stone(*x), StoneList::from_slice(tail).unwrap())
+                }
+            })
         }
 
         pub fn len(&self) -> usize {

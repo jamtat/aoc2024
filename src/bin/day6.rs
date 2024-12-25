@@ -37,15 +37,15 @@ impl Tile {
     }
 
     pub fn from_char(c: char) -> Option<Self> {
-        match c {
-            '.' => Some(Self::Empty),
-            '#' => Some(Self::Obstacle),
-            '^' => Some(Self::Guard(Direction::Up)),
-            'v' => Some(Self::Guard(Direction::Down)),
-            '<' => Some(Self::Guard(Direction::Left)),
-            '>' => Some(Self::Guard(Direction::Right)),
-            _ => None,
-        }
+        Some(match c {
+            '.' => Self::Empty,
+            '#' => Self::Obstacle,
+            '^' => Self::Guard(Direction::Up),
+            'v' => Self::Guard(Direction::Down),
+            '<' => Self::Guard(Direction::Left),
+            '>' => Self::Guard(Direction::Right),
+            _ => None?,
+        })
     }
 
     pub fn direction(&self) -> Option<Direction> {
