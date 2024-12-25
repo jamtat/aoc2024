@@ -58,6 +58,49 @@ impl Point {
     }
 }
 
+impl std::ops::Add<(isize, isize)> for Point {
+    type Output = Option<Point>;
+
+    fn add(self, (dx, dy): (isize, isize)) -> Self::Output {
+        let x: isize = self.x.try_into().ok()?;
+        let y: isize = self.y.try_into().ok()?;
+
+        Some(Self::new(
+            (x + dx).try_into().ok()?,
+            (y + dy).try_into().ok()?,
+        ))
+    }
+}
+
+impl std::ops::Add<Direction> for Point {
+    type Output = Option<Point>;
+
+    fn add(self, rhs: Direction) -> Self::Output {
+        self + match rhs {
+            Direction::Up => (0, -1),
+            Direction::Down => (0, 1),
+            Direction::Left => (-1, 0),
+            Direction::Right => (1, 0),
+        }
+    }
+}
+
+impl std::ops::Sub<(isize, isize)> for Point {
+    type Output = Option<Point>;
+
+    fn sub(self, (dx, dy): (isize, isize)) -> Self::Output {
+        self + (-dx, -dy)
+    }
+}
+
+impl std::ops::Sub<Direction> for Point {
+    type Output = Option<Point>;
+
+    fn sub(self, rhs: Direction) -> Self::Output {
+        self + (-rhs)
+    }
+}
+
 impl Display for Point {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "({}, {})", self.x, self.y)
@@ -304,6 +347,12 @@ impl<T: Index<usize>> Clone for GridCell<'_, T> {
 impl<T: Index<usize>> Copy for GridCell<'_, T> {}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Axis {
+    Vertical,
+    Horizontal,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Direction {
     Up,
     Down,
@@ -320,7 +369,7 @@ impl Direction {
         cell.go(self)
     }
 
-    pub fn turn_right(&self) -> Self {
+    pub const fn turn_right(&self) -> Self {
         match self {
             Self::Up => Self::Right,
             Self::Right => Self::Down,
@@ -329,13 +378,37 @@ impl Direction {
         }
     }
 
-    pub fn turn_left(&self) -> Self {
+    pub const fn turn_left(&self) -> Self {
         match self {
             Self::Up => Self::Left,
             Self::Left => Self::Down,
             Self::Down => Self::Right,
             Self::Right => Self::Up,
         }
+    }
+
+    pub const fn opposite(&self) -> Self {
+        match self {
+            Self::Up => Self::Down,
+            Self::Down => Self::Up,
+            Self::Left => Self::Right,
+            Self::Right => Self::Left,
+        }
+    }
+
+    pub const fn axis(&self) -> Axis {
+        match self {
+            Self::Up | Self::Down => Axis::Vertical,
+            Self::Left | Self::Right => Axis::Horizontal,
+        }
+    }
+}
+
+impl std::ops::Neg for Direction {
+    type Output = Self;
+
+    fn neg(self) -> Self::Output {
+        self.opposite()
     }
 }
 
