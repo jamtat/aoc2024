@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Point {
     pub x: usize,
     pub y: usize,
@@ -55,6 +55,10 @@ impl Point {
 
     pub fn manhattan_distance(&self, other: &Point) -> usize {
         self.x.abs_diff(other.x) + self.y.abs_diff(other.y)
+    }
+
+    pub fn tuple(&self) -> (usize, usize) {
+        (self.x, self.y)
     }
 }
 
@@ -163,6 +167,14 @@ impl<T: Index<usize>> Grid<T> {
 
     pub fn iter(&self) -> GridIter<'_, T> {
         GridIter::new(self)
+    }
+
+    pub fn find_by_value<F>(&self, pred: F) -> Option<GridCell<'_, T>>
+    where
+        F: Fn(T::Output) -> bool,
+        T::Output: Copy,
+    {
+        self.iter().find(|cell| pred(*cell.value()))
     }
 }
 
@@ -400,6 +412,15 @@ impl Direction {
         match self {
             Self::Up | Self::Down => Axis::Vertical,
             Self::Left | Self::Right => Axis::Horizontal,
+        }
+    }
+
+    pub const fn char(&self) -> char {
+        match self {
+            Self::Up => '^',
+            Self::Down => 'v',
+            Self::Left => '<',
+            Self::Right => '>',
         }
     }
 }
