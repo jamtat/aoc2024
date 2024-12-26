@@ -63,12 +63,13 @@ where
             let cost = state.cost();
 
             if (self.is_end)(&state) {
-                if let Some(min_cost) = self.min_cost {
-                    return (cost == min_cost).then_some(state);
-                } else {
-                    self.min_cost = Some(cost);
-                    return Some(state);
-                }
+                return match self.min_cost {
+                    Some(min_cost) => (cost == min_cost).then_some(state),
+                    None => {
+                        self.min_cost = Some(cost);
+                        Some(state)
+                    }
+                };
             }
 
             match self.existing_cost(&state) {
