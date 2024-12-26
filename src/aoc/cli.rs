@@ -11,6 +11,14 @@ pub struct Cli {
     pub input: Option<std::path::PathBuf>,
 }
 
+fn input_path(filename: &str) -> std::path::PathBuf {
+    format!("input/{filename}").into()
+}
+
+pub fn input_string(filename: &str) -> String {
+    read_to_string(input_path(filename)).unwrap()
+}
+
 impl Cli {
     pub fn line_reader(&self) -> impl Iterator<Item = String> + '_ {
         let f = File::open(self.input_file()).unwrap();
@@ -33,7 +41,7 @@ impl Cli {
                 .unwrap()
                 .1
                 .to_owned();
-            format!("input/{}.txt", day_name).into()
+            input_path(&format!("{day_name}.txt"))
         }
     }
 }

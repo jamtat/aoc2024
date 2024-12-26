@@ -1,6 +1,7 @@
 use std::{
     collections::{BinaryHeap, HashMap},
     fmt::{Debug, Display, Write},
+    hash::Hash,
     str::FromStr,
 };
 
@@ -61,7 +62,65 @@ struct State<'a> {
     direction: Direction,
     cell: GridCell<'a, Vec<Tile>>,
     cost: usize,
-    last: Option<Box<State<'a>>>,
+}
+
+impl<'a> State<'a> {
+    pub fn new(direction: Direction, cell: GridCell<'a, Vec<Tile>>, cost: usize) -> Self {
+        Self {
+            direction,
+            cell,
+            cost,
+        }
+    }
+
+    pub fn point(&self) -> Point {
+        self.cell.point()
+    }
+
+    pub fn tile(&self) -> Tile {
+        *self.cell.value()
+    }
+
+    pub fn is_end(&self) -> bool {
+        matches!(self.tile(), Tile::End)
+    }
+}
+
+impl DState for State<'_> {
+    type Position = (Point, Direction);
+
+    fn cost(&self) -> usize {
+        self.cost
+    }
+
+    fn position(&self) -> Self::Position {
+        (self.point(), self.direction)
+    }
+
+    fn next(&self) -> Vec<Self> {
+        let mut out = vec![];
+        const BASE_COST: usize = 1;
+        const TURN_COST: usize = 1000;
+
+        if let Some(next) = self.cell.go(&self.direction) {
+            if next.value().traversible() {
+                out.push(State::new(self.direction, next, self.cost + BASE_COST));
+            }
+        }
+
+        out.push(State::new(
+            self.direction.turn_left(),
+            self.cell,
+            self.cost + TURN_COST,
+        ));
+        out.push(State::new(
+            self.direction.turn_right(),
+            self.cell,
+            self.cost + TURN_COST,
+        ));
+
+        out
+    }
 }
 
 impl Debug for State<'_> {
@@ -75,81 +134,11 @@ impl Debug for State<'_> {
     }
 }
 
-impl<'a> State<'a> {
-    pub fn new(
-        direction: Direction,
-        cell: GridCell<'a, Vec<Tile>>,
-        cost: usize,
-        last: Option<Box<Self>>,
-    ) -> Self {
-        Self {
-            direction,
-            cell,
-            cost,
-            last,
-        }
-    }
-
-    pub fn point(&self) -> Point {
-        self.cell.point()
-    }
-
-    pub fn boxed(&self) -> Box<Self> {
-        self.clone().into()
-    }
-
-    pub fn len(&self) -> usize {
-        match &self.last {
-            Some(last) => last.len() + 1,
-            None => 1,
-        }
-    }
-
-    pub fn same_direction(&self) -> bool {
-        if let Some(last) = &self.last {
-            last.direction == self.direction
-        } else {
-            false
-        }
-    }
-
-    pub fn position(&self) -> StatePosition {
-        (self.point(), self.direction)
-    }
-}
-
-impl<'a> IntoIterator for State<'a> {
-    type Item = <StateIter<'a> as Iterator>::Item;
-
-    type IntoIter = StateIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        StateIter {
-            next_state: Some(self),
-        }
-    }
-}
-
-struct StateIter<'a> {
-    next_state: Option<State<'a>>,
-}
-
-impl<'a> Iterator for StateIter<'a> {
-    type Item = State<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let ret = self.next_state.take();
-        self.next_state = ret.clone().and_then(|state| state.last.map(|boxed| *boxed));
-        ret
-    }
-}
-
 impl Ord for State<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other
             .cost
             .cmp(&self.cost)
-            .then_with(|| other.same_direction().cmp(&self.same_direction()))
             .then_with(|| other.direction.cmp(&self.direction))
             .then_with(|| other.point().cmp(&self.point()))
     }
@@ -171,83 +160,39 @@ impl PartialEq for State<'_> {
 
 impl Eq for State<'_> {}
 
-type StatePosition = (Point, Direction);
+trait DState: Sized + PartialOrd + Ord + PartialEq + Eq {
+    type Position: Sized + PartialEq + Eq + Hash;
 
-fn next_states(
-    state @ State {
-        direction,
-        cell,
-        cost,
-        last: _,
-    }: State<'_>,
-) -> Vec<State<'_>> {
-    let mut out = vec![];
-    const BASE_COST: usize = 1;
-    const TURN_COST: usize = 1000;
-
-    if let Some(next) = cell.go(&direction) {
-        if next.value().traversible() {
-            out.push(State::new(
-                direction,
-                next,
-                cost + BASE_COST,
-                Some(state.boxed()),
-            ));
-        }
-    }
-    let left = direction.turn_left();
-    let right = direction.turn_right();
-    // Could potentally need to turn backwards depending on the start position
-    // but after checking examples and input this is not necessary
-
-    out.push(State::new(
-        left,
-        cell,
-        cost + TURN_COST,
-        Some(state.boxed()),
-    ));
-    out.push(State::new(
-        right,
-        cell,
-        cost + TURN_COST,
-        Some(state.boxed()),
-    ));
-
-    out.sort_by_key(|state| state.cost);
-    out
+    fn cost(&self) -> usize;
+    fn position(&self) -> Self::Position;
+    fn next(&self) -> Vec<Self>;
 }
 
-fn djikstras(map: &Map) -> Option<State> {
-    let start = map
-        .find_by_value(|tile| matches!(tile, Tile::Start))
-        .expect("Map must have a start");
-
-    let end_point = map
-        .find_by_value(|tile| matches!(tile, Tile::End))
-        .expect("Map must have an end")
-        .point();
-
-    let mut costs: HashMap<StatePosition, usize> = HashMap::new();
+fn djikstras<S, F>(start: S, is_end: F) -> Vec<Vec<S>>
+where
+    S: DState,
+    F: Fn(&S) -> bool,
+{
+    let mut costs: HashMap<S::Position, usize> = HashMap::new();
     let mut heap = BinaryHeap::new();
-    {
-        let start_state = State::new(Direction::Right, start, 0, None);
-        costs.insert(start_state.position(), 0);
-        heap.push(start_state);
-    }
+    costs.insert(start.position(), 0);
+    heap.push(start);
 
-    while let Some(
-        state @ State {
-            direction: _,
-            cell: _,
-            cost,
-            last: _,
-        },
-    ) = heap.pop()
-    {
-        let point = state.point();
+    let mut paths: Vec<Vec<S>> = vec![];
+
+    while let Some(state) = heap.pop() {
         let position = state.position();
-        if point == end_point {
-            return Some(state);
+        let cost = state.cost();
+
+        if is_end(&state) {
+            if let Some(existing_end_state) = paths.first() {
+                let existing_end_state = existing_end_state.first().unwrap();
+                if state.cost() > existing_end_state.cost() {
+                    break;
+                }
+            }
+            paths.push(vec![state]);
+            continue;
         }
 
         if costs
@@ -258,17 +203,18 @@ fn djikstras(map: &Map) -> Option<State> {
             continue;
         }
 
-        for next in next_states(state) {
+        for next in state.next() {
             let next_position = next.position();
             let existing_cost = *costs.get(&next_position).unwrap_or(&usize::MAX);
-            if next.cost < existing_cost {
-                costs.insert(next_position, next.cost);
+            let next_cost = next.cost();
+            if next_cost < existing_cost {
+                costs.insert(next_position, next_cost);
                 heap.push(next);
             }
         }
     }
 
-    None
+    paths
 }
 
 mod part1 {
@@ -276,24 +222,17 @@ mod part1 {
 
     pub fn calculate(input: &str) -> usize {
         let map = input.parse::<Map>().unwrap();
-        let state = djikstras(&map).expect("Should find a shortest path to the end");
-        let cost = state.cost;
-        println!("Path len: {}", state.len());
-        // #[cfg(test)]
-        {
-            for history in state.clone().into_iter().collect::<Vec<_>>().iter().rev() {
-                println!("{:?}", history);
-            }
-            for mut path in state {
-                if path.cell.value().terminus() {
-                    continue;
-                }
-                *path.cell.value_mut() = Tile::Overlay(path.direction);
-            }
-            println!("{}", map);
-        }
 
-        cost
+        let start_state = State::new(
+            Direction::Right,
+            map.find_by_value(|tile| matches!(tile, Tile::Start))
+                .expect("Map must have a start"),
+            0,
+        );
+
+        let end_states = djikstras(start_state, State::is_end);
+
+        end_states.first().unwrap().first().unwrap().cost()
     }
 
     #[cfg(test)]
@@ -310,6 +249,12 @@ mod part1 {
         fn test_example_2() {
             let input = aoc::example::example_string("day16_2.txt");
             assert_eq!(calculate(&input), 11048);
+        }
+
+        #[test]
+        fn test_input() {
+            let input = aoc::cli::input_string("day16.txt");
+            assert_eq!(calculate(&input), 143564);
         }
     }
 }
