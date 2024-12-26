@@ -1,5 +1,5 @@
 use std::{
-    collections::{BinaryHeap, HashMap},
+    collections::HashSet,
     fmt::{Debug, Display, Write},
     hash::Hash,
     str::FromStr,
@@ -7,6 +7,7 @@ use std::{
 
 use aoc2024::aoc::{
     self,
+    algo::djikstra::{Djikstra, DjikstraState},
     grid::{Direction, Grid, GridCell, Point},
 };
 
@@ -102,7 +103,7 @@ impl<'a> State<'a> {
     }
 }
 
-impl DState for State<'_> {
+impl DjikstraState for State<'_> {
     type Position = (Point, Direction);
     type Cost = usize;
 
@@ -173,77 +174,8 @@ impl PartialEq for State<'_> {
 
 impl Eq for State<'_> {}
 
-trait DState: Sized + PartialOrd + Ord + PartialEq + Eq {
-    type Position: Sized + PartialEq + Eq + Hash;
-    type Cost: Sized + PartialOrd + Copy;
-
-    fn cost(&self) -> Self::Cost;
-    fn position(&self) -> Self::Position;
-    fn next(&self) -> Vec<Self>;
-}
-
-fn djikstras<S, F>(start: S, is_end: F) -> Vec<S>
-where
-    S: DState + Debug,
-    F: Fn(&S) -> bool,
-    <S as DState>::Cost: Display,
-{
-    let mut costs: HashMap<S::Position, S::Cost> = HashMap::new();
-    let mut heap = BinaryHeap::new();
-
-    costs.insert(start.position(), start.cost());
-    heap.push(start);
-
-    let mut paths: Vec<S> = vec![];
-    let mut min_cost = None;
-
-    while let Some(state) = heap.pop() {
-        let position = state.position();
-        let cost = state.cost();
-
-        if is_end(&state) {
-            if let Some(cost) = min_cost {
-                if state.cost() <= cost {
-                    paths.push(state);
-                    continue;
-                } else {
-                    break;
-                }
-            } else {
-                min_cost = Some(state.cost());
-                paths.push(state);
-                continue;
-            }
-        }
-
-        if costs
-            .get(&position)
-            .map(|&existing_cost| cost > existing_cost)
-            .unwrap_or(false)
-        {
-            continue;
-        }
-
-        for next in state.next() {
-            let next_position = next.position();
-            let next_cost = next.cost();
-
-            if let Some(&existing_cost) = costs.get(&next_position) {
-                if next_cost <= existing_cost {
-                    costs.insert(next_position, next_cost);
-                    heap.push(next);
-                }
-            } else {
-                costs.insert(next_position, next_cost);
-                heap.push(next);
-            }
-        }
-    }
-
-    paths
-}
-
 mod part1 {
+
     use super::*;
 
     pub fn calculate(input: &str) -> usize {
@@ -256,10 +188,10 @@ mod part1 {
             0,
         );
 
-        let end_states = djikstras(start_state, State::is_end);
-        // println!("\n{:#?}", end_states);
-
-        end_states.first().unwrap().cost()
+        Djikstra::new(start_state, State::is_end)
+            .next()
+            .expect("Should find an end state")
+            .cost()
     }
 
     #[cfg(test)]
@@ -288,7 +220,6 @@ mod part1 {
 
 mod part2 {
     use super::*;
-    use std::collections::HashSet;
 
     #[allow(dead_code)]
     fn apply(map: &Map, state: &State) -> Map {
@@ -310,7 +241,7 @@ mod part2 {
             0,
         );
 
-        let end_states = djikstras(start_state, State::is_end);
+        let end_states = Djikstra::new(start_state, State::is_end).collect::<Vec<_>>();
 
         let points: HashSet<_> = end_states
             .iter()
