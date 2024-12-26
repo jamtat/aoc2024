@@ -1,182 +1,196 @@
-use std::{
-    collections::HashSet,
-    fmt::{Debug, Display, Write},
-    hash::Hash,
-    str::FromStr,
-};
+use aoc2024::aoc::{self};
 
-use aoc2024::aoc::{
-    self,
-    algo::djikstra::{Djikstra, DjikstraState},
-    grid::{Direction, Grid, GridCell, Point},
-};
+mod map {
+    use std::{
+        fmt::{Display, Write},
+        str::FromStr,
+    };
 
-pub type Map = Grid<Vec<Tile>>;
+    use aoc2024::aoc::grid::{Direction, Grid};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum Tile {
-    Empty,
-    Wall,
-    Start,
-    End,
-    Overlay(Direction),
-    Path,
-}
+    pub type Map = Grid<Vec<Tile>>;
 
-impl Tile {
-    pub fn traversible(&self) -> bool {
-        !matches!(self, Tile::Wall)
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub enum Tile {
+        Empty,
+        Wall,
+        Start,
+        End,
+        Overlay(Direction),
+        Path,
     }
 
-    pub fn terminus(&self) -> bool {
-        matches!(self, Tile::Start | Tile::End)
-    }
-}
-
-impl FromStr for Tile {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(match s {
-            "." => Self::Empty,
-            "#" => Self::Wall,
-            "S" => Self::Start,
-            "E" => Self::End,
-            _ => Err(s.to_string())?,
-        })
-    }
-}
-
-impl Display for Tile {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_char(match self {
-            Tile::Empty => ' ',
-            Tile::Wall => '#',
-            Tile::Start => 'S',
-            Tile::End => 'E',
-            Tile::Overlay(direction) => direction.char(),
-            Tile::Path => 'O',
-        })
-    }
-}
-
-#[derive(Clone)]
-struct State<'a> {
-    direction: Direction,
-    cell: GridCell<'a, Vec<Tile>>,
-    cost: usize,
-    path: Vec<(Point, Direction)>,
-}
-
-impl<'a> State<'a> {
-    pub fn new(direction: Direction, cell: GridCell<'a, Vec<Tile>>, cost: usize) -> Self {
-        Self {
-            direction,
-            cell,
-            cost,
-            path: vec![(cell.point(), direction)],
+    impl Tile {
+        pub fn traversible(&self) -> bool {
+            !matches!(self, Tile::Wall)
         }
     }
 
-    pub fn point(&self) -> Point {
-        self.cell.point()
+    impl FromStr for Tile {
+        type Err = String;
+
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            Ok(match s {
+                "." => Self::Empty,
+                "#" => Self::Wall,
+                "S" => Self::Start,
+                "E" => Self::End,
+                _ => Err(s.to_string())?,
+            })
+        }
     }
 
-    pub fn tile(&self) -> Tile {
-        *self.cell.value()
-    }
-
-    pub fn is_end(&self) -> bool {
-        matches!(self.tile(), Tile::End)
-    }
-
-    pub fn add(&self, direction: Direction, cell: GridCell<'a, Vec<Tile>>, cost: usize) -> Self {
-        let mut path = self.path.clone();
-        path.push((cell.point(), direction));
-
-        Self {
-            direction,
-            cell,
-            cost,
-            path,
+    impl Display for Tile {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_char(match self {
+                Tile::Empty => ' ',
+                Tile::Wall => '#',
+                Tile::Start => 'S',
+                Tile::End => 'E',
+                Tile::Overlay(direction) => direction.char(),
+                Tile::Path => 'O',
+            })
         }
     }
 }
 
-impl DjikstraState for State<'_> {
-    type Position = (Point, Direction);
-    type Cost = usize;
+mod state {
+    use super::map::Tile;
+    use aoc2024::aoc::{
+        algo::djikstra::DjikstraState,
+        grid::{Direction, GridCell, Point},
+    };
+    use std::fmt::Debug;
 
-    fn cost(&self) -> usize {
-        self.cost
+    #[derive(Clone)]
+    pub struct State<'a> {
+        direction: Direction,
+        cell: GridCell<'a, Vec<Tile>>,
+        cost: usize,
+        path: Vec<(Point, Direction)>,
     }
 
-    fn position(&self) -> Self::Position {
-        (self.point(), self.direction)
-    }
-
-    fn next(&self) -> Vec<Self> {
-        let mut out = vec![];
-        const BASE_COST: usize = 1;
-        const TURN_COST: usize = 1000;
-
-        if let Some(next) = self.cell.go(&self.direction) {
-            if next.value().traversible() {
-                out.push(self.add(self.direction, next, self.cost + BASE_COST));
+    impl<'a> State<'a> {
+        pub fn new(direction: Direction, cell: GridCell<'a, Vec<Tile>>, cost: usize) -> Self {
+            Self {
+                direction,
+                cell,
+                cost,
+                path: vec![(cell.point(), direction)],
             }
         }
 
-        out.push(self.add(self.direction.turn_left(), self.cell, self.cost + TURN_COST));
-        out.push(self.add(
-            self.direction.turn_right(),
-            self.cell,
-            self.cost + TURN_COST,
-        ));
+        fn point(&self) -> Point {
+            self.cell.point()
+        }
 
-        out
+        fn tile(&self) -> Tile {
+            *self.cell.value()
+        }
+
+        pub fn is_end(&self) -> bool {
+            matches!(self.tile(), Tile::End)
+        }
+
+        pub fn path(&self) -> Vec<<Self as DjikstraState>::Position> {
+            self.path.clone()
+        }
+
+        fn add(&self, direction: Direction, cell: GridCell<'a, Vec<Tile>>, cost: usize) -> Self {
+            let mut path = self.path.clone();
+            path.push((cell.point(), direction));
+
+            Self {
+                direction,
+                cell,
+                cost,
+                path,
+            }
+        }
     }
-}
 
-impl Debug for State<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("State")
-            .field("direction", &self.direction)
-            .field("point", &self.point().tuple())
-            .field("cost", &self.cost)
-            // .field("last", &self.last)
-            .finish()
+    impl DjikstraState for State<'_> {
+        type Position = (Point, Direction);
+        type Cost = usize;
+
+        fn cost(&self) -> usize {
+            self.cost
+        }
+
+        fn position(&self) -> Self::Position {
+            (self.point(), self.direction)
+        }
+
+        fn next(&self) -> Vec<Self> {
+            let mut out = vec![];
+            const BASE_COST: usize = 1;
+            const TURN_COST: usize = 1000;
+
+            if let Some(next) = self.cell.go(&self.direction) {
+                if next.value().traversible() {
+                    out.push(self.add(self.direction, next, self.cost + BASE_COST));
+                }
+            }
+
+            out.push(self.add(self.direction.turn_left(), self.cell, self.cost + TURN_COST));
+            out.push(self.add(
+                self.direction.turn_right(),
+                self.cell,
+                self.cost + TURN_COST,
+            ));
+
+            out
+        }
     }
-}
 
-impl Ord for State<'_> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        other
-            .cost
-            .cmp(&self.cost)
-            .then_with(|| other.direction.cmp(&self.direction))
-            .then_with(|| other.point().cmp(&self.point()))
+    impl Debug for State<'_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_struct("State")
+                .field("direction", &self.direction)
+                .field("point", &self.point().tuple())
+                .field("cost", &self.cost)
+                // .field("last", &self.last)
+                .finish()
+        }
     }
-}
 
-impl PartialOrd for State<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
+    impl Ord for State<'_> {
+        fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+            other
+                .cost
+                .cmp(&self.cost)
+                .then_with(|| other.direction.cmp(&self.direction))
+                .then_with(|| other.point().cmp(&self.point()))
+        }
     }
-}
 
-impl PartialEq for State<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.direction == other.direction
-            && self.point() == other.point()
-            && self.cost == other.cost
+    impl PartialOrd for State<'_> {
+        fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+            Some(self.cmp(other))
+        }
     }
-}
 
-impl Eq for State<'_> {}
+    impl PartialEq for State<'_> {
+        fn eq(&self, other: &Self) -> bool {
+            self.direction == other.direction
+                && self.point() == other.point()
+                && self.cost == other.cost
+        }
+    }
+
+    impl Eq for State<'_> {}
+}
 
 mod part1 {
-
-    use super::*;
+    use crate::{
+        map::{Map, Tile},
+        state::State,
+    };
+    use aoc2024::aoc::{
+        algo::djikstra::{Djikstra, DjikstraState},
+        grid::Direction,
+    };
 
     pub fn calculate(input: &str) -> usize {
         let map = input.parse::<Map>().unwrap();
@@ -196,6 +210,8 @@ mod part1 {
 
     #[cfg(test)]
     mod test {
+        use aoc2024::aoc;
+
         use super::*;
 
         #[test]
@@ -219,13 +235,18 @@ mod part1 {
 }
 
 mod part2 {
-    use super::*;
+    use crate::{
+        map::{Map, Tile},
+        state::State,
+    };
+    use aoc2024::aoc::{algo::djikstra::Djikstra, grid::Direction};
+    use std::collections::HashSet;
 
     #[allow(dead_code)]
     fn apply(map: &Map, state: &State) -> Map {
         let map = map.clone();
 
-        for (point, direction) in &state.path {
+        for (point, direction) in &state.path() {
             *point.on(&map).unwrap().value_mut() = Tile::Overlay(*direction);
         }
         map
@@ -245,11 +266,17 @@ mod part2 {
 
         let points: HashSet<_> = end_states
             .iter()
-            .flat_map(|s| s.path.iter().map(|&(point, _direction)| point))
+            .flat_map(|s| {
+                s.path()
+                    .iter()
+                    .map(|&(point, _direction)| point)
+                    .collect::<Vec<_>>()
+            })
             .collect();
 
         #[cfg(test)]
         {
+            use aoc2024::aoc::algo::djikstra::DjikstraState;
             println!("Found {} end states", end_states.len());
             for state in &end_states {
                 println!("\n\nCost: {}\n{}\n", state.cost(), apply(&map, state));
@@ -266,6 +293,7 @@ mod part2 {
     #[cfg(test)]
     mod test {
         use super::*;
+        use aoc2024::aoc;
 
         #[test]
         fn test_example() {
