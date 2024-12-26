@@ -193,6 +193,16 @@ impl<U: Copy> Grid<Vec<U>> {
     }
 }
 
+impl<T: Clone + Index<usize>> Clone for Grid<T> {
+    fn clone(&self) -> Self {
+        Self {
+            width: self.width,
+            height: self.height,
+            items: self.items.clone(),
+        }
+    }
+}
+
 impl<U> FromStr for Grid<Vec<U>>
 where
     U: FromStr,

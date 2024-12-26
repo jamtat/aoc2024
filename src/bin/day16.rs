@@ -19,6 +19,7 @@ pub enum Tile {
     Start,
     End,
     Overlay(Direction),
+    Path,
 }
 
 impl Tile {
@@ -53,6 +54,7 @@ impl Display for Tile {
             Tile::Start => 'S',
             Tile::End => 'E',
             Tile::Overlay(direction) => direction.char(),
+            Tile::Path => 'O',
         })
     }
 }
@@ -62,6 +64,7 @@ struct State<'a> {
     direction: Direction,
     cell: GridCell<'a, Vec<Tile>>,
     cost: usize,
+    path: Vec<(Point, Direction)>,
 }
 
 impl<'a> State<'a> {
@@ -70,6 +73,7 @@ impl<'a> State<'a> {
             direction,
             cell,
             cost,
+            path: vec![(cell.point(), direction)],
         }
     }
 
@@ -83,6 +87,18 @@ impl<'a> State<'a> {
 
     pub fn is_end(&self) -> bool {
         matches!(self.tile(), Tile::End)
+    }
+
+    pub fn add(&self, direction: Direction, cell: GridCell<'a, Vec<Tile>>, cost: usize) -> Self {
+        let mut path = self.path.clone();
+        path.push((cell.point(), direction));
+
+        Self {
+            direction,
+            cell,
+            cost,
+            path,
+        }
     }
 }
 
@@ -105,16 +121,12 @@ impl DState for State<'_> {
 
         if let Some(next) = self.cell.go(&self.direction) {
             if next.value().traversible() {
-                out.push(State::new(self.direction, next, self.cost + BASE_COST));
+                out.push(self.add(self.direction, next, self.cost + BASE_COST));
             }
         }
 
-        out.push(State::new(
-            self.direction.turn_left(),
-            self.cell,
-            self.cost + TURN_COST,
-        ));
-        out.push(State::new(
+        out.push(self.add(self.direction.turn_left(), self.cell, self.cost + TURN_COST));
+        out.push(self.add(
             self.direction.turn_right(),
             self.cell,
             self.cost + TURN_COST,
@@ -170,31 +182,38 @@ trait DState: Sized + PartialOrd + Ord + PartialEq + Eq {
     fn next(&self) -> Vec<Self>;
 }
 
-fn djikstras<S, F>(start: S, is_end: F) -> Vec<Vec<S>>
+fn djikstras<S, F>(start: S, is_end: F) -> Vec<S>
 where
-    S: DState,
+    S: DState + Debug,
     F: Fn(&S) -> bool,
+    <S as DState>::Cost: Display,
 {
     let mut costs: HashMap<S::Position, S::Cost> = HashMap::new();
     let mut heap = BinaryHeap::new();
+
     costs.insert(start.position(), start.cost());
     heap.push(start);
 
-    let mut paths: Vec<Vec<S>> = vec![];
+    let mut paths: Vec<S> = vec![];
+    let mut min_cost = None;
 
     while let Some(state) = heap.pop() {
         let position = state.position();
         let cost = state.cost();
 
         if is_end(&state) {
-            if let Some(existing_end_state) = paths.first() {
-                let existing_end_state = existing_end_state.first().unwrap();
-                if state.cost() > existing_end_state.cost() {
+            if let Some(cost) = min_cost {
+                if state.cost() <= cost {
+                    paths.push(state);
+                    continue;
+                } else {
                     break;
                 }
+            } else {
+                min_cost = Some(state.cost());
+                paths.push(state);
+                continue;
             }
-            paths.push(vec![state]);
-            continue;
         }
 
         if costs
@@ -210,7 +229,7 @@ where
             let next_cost = next.cost();
 
             if let Some(&existing_cost) = costs.get(&next_position) {
-                if next_cost < existing_cost {
+                if next_cost <= existing_cost {
                     costs.insert(next_position, next_cost);
                     heap.push(next);
                 }
@@ -238,8 +257,9 @@ mod part1 {
         );
 
         let end_states = djikstras(start_state, State::is_end);
+        // println!("\n{:#?}", end_states);
 
-        end_states.first().unwrap().first().unwrap().cost()
+        end_states.first().unwrap().cost()
     }
 
     #[cfg(test)]
@@ -265,12 +285,51 @@ mod part1 {
         }
     }
 }
-/*
+
 mod part2 {
     use super::*;
+    use std::collections::HashSet;
+
+    #[allow(dead_code)]
+    fn apply(map: &Map, state: &State) -> Map {
+        let map = map.clone();
+
+        for (point, direction) in &state.path {
+            *point.on(&map).unwrap().value_mut() = Tile::Overlay(*direction);
+        }
+        map
+    }
 
     pub fn calculate(input: &str) -> usize {
-        0
+        let map = input.parse::<Map>().unwrap();
+
+        let start_state = State::new(
+            Direction::Right,
+            map.find_by_value(|tile| matches!(tile, Tile::Start))
+                .expect("Map must have a start"),
+            0,
+        );
+
+        let end_states = djikstras(start_state, State::is_end);
+
+        let points: HashSet<_> = end_states
+            .iter()
+            .flat_map(|s| s.path.iter().map(|&(point, _direction)| point))
+            .collect();
+
+        #[cfg(test)]
+        {
+            println!("Found {} end states", end_states.len());
+            for state in &end_states {
+                println!("\n\nCost: {}\n{}\n", state.cost(), apply(&map, state));
+            }
+            for point in &points {
+                *point.on(&map).unwrap().value_mut() = Tile::Path;
+            }
+            println!("{}", map);
+        }
+
+        points.len()
     }
 
     #[cfg(test)]
@@ -280,16 +339,28 @@ mod part2 {
         #[test]
         fn test_example() {
             let input = aoc::example::example_string("day16.txt");
-            assert_eq!(calculate(&input), 0);
+            assert_eq!(calculate(&input), 45);
+        }
+
+        #[test]
+        fn test_example_2() {
+            let input = aoc::example::example_string("day16_2.txt");
+            assert_eq!(calculate(&input), 64);
+        }
+
+        #[test]
+        fn test_input() {
+            let input = aoc::cli::input_string("day16.txt");
+            assert_eq!(calculate(&input), 593);
         }
     }
 }
-*/
+
 fn main() {
     let cli = aoc::cli::parse();
 
     let input = cli.input_string();
 
     println!("Part 1: {}", part1::calculate(&input));
-    // println!("Part 2: {}", part2::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input));
 }
