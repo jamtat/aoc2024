@@ -67,13 +67,9 @@ where
                 }
             }
 
-            if self
-                .costs
-                .get(&state.position())
-                .map(|&existing_cost| cost > existing_cost)
-                .unwrap_or(false)
-            {
-                continue;
+            match self.costs.get(&state.position()) {
+                Some(&existing_cost) if cost > existing_cost => continue,
+                _ => {}
             }
 
             for next in state.next() {
