@@ -45,6 +45,10 @@ where
     fn next_state(&mut self) -> Option<S> {
         self.heap.pop()
     }
+
+    fn existing_cost(&self, state: &S) -> Option<S::Cost> {
+        self.costs.get(&state.position()).copied()
+    }
 }
 
 impl<S, F> Iterator for Djikstra<S, F>
@@ -67,14 +71,14 @@ where
                 }
             }
 
-            match self.costs.get(&state.position()) {
-                Some(&existing_cost) if cost > existing_cost => continue,
+            match self.existing_cost(&state) {
+                Some(existing_cost) if cost > existing_cost => continue,
                 _ => {}
             }
 
             for next in state.next() {
-                match self.costs.get(&next.position()) {
-                    Some(&existing_cost) if next.cost() <= existing_cost => self.add_state(next),
+                match self.existing_cost(&next) {
+                    Some(existing_cost) if next.cost() <= existing_cost => self.add_state(next),
                     None => self.add_state(next),
                     _ => {}
                 }
