@@ -88,6 +88,7 @@ impl<'a> State<'a> {
 
 impl DState for State<'_> {
     type Position = (Point, Direction);
+    type Cost = usize;
 
     fn cost(&self) -> usize {
         self.cost
@@ -162,8 +163,9 @@ impl Eq for State<'_> {}
 
 trait DState: Sized + PartialOrd + Ord + PartialEq + Eq {
     type Position: Sized + PartialEq + Eq + Hash;
+    type Cost: Sized + PartialOrd + Copy;
 
-    fn cost(&self) -> usize;
+    fn cost(&self) -> Self::Cost;
     fn position(&self) -> Self::Position;
     fn next(&self) -> Vec<Self>;
 }
@@ -173,9 +175,9 @@ where
     S: DState,
     F: Fn(&S) -> bool,
 {
-    let mut costs: HashMap<S::Position, usize> = HashMap::new();
+    let mut costs: HashMap<S::Position, S::Cost> = HashMap::new();
     let mut heap = BinaryHeap::new();
-    costs.insert(start.position(), 0);
+    costs.insert(start.position(), start.cost());
     heap.push(start);
 
     let mut paths: Vec<Vec<S>> = vec![];
@@ -205,9 +207,14 @@ where
 
         for next in state.next() {
             let next_position = next.position();
-            let existing_cost = *costs.get(&next_position).unwrap_or(&usize::MAX);
             let next_cost = next.cost();
-            if next_cost < existing_cost {
+
+            if let Some(&existing_cost) = costs.get(&next_position) {
+                if next_cost < existing_cost {
+                    costs.insert(next_position, next_cost);
+                    heap.push(next);
+                }
+            } else {
                 costs.insert(next_position, next_cost);
                 heap.push(next);
             }
