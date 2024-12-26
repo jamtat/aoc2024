@@ -73,15 +73,10 @@ where
             }
 
             for next in state.next() {
-                let next_position = next.position();
-                let next_cost = next.cost();
-
-                if let Some(&existing_cost) = self.costs.get(&next_position) {
-                    if next_cost <= existing_cost {
-                        self.add_state(next);
-                    }
-                } else {
-                    self.add_state(next);
+                match self.costs.get(&next.position()) {
+                    Some(&existing_cost) if next.cost() <= existing_cost => self.add_state(next),
+                    None => self.add_state(next),
+                    _ => {}
                 }
             }
         }
