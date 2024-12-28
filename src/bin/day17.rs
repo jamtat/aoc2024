@@ -2,7 +2,10 @@ use aoc2024::aoc;
 
 #[allow(dead_code)]
 pub mod computer {
-    use std::fmt::{Display, Write};
+    use std::{
+        fmt::{Display, Write},
+        ops::Not,
+    };
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
     pub struct OpCode(u8);
@@ -29,7 +32,7 @@ pub mod computer {
         }
     }
 
-    struct Operand(OpCode);
+    pub struct Operand(OpCode);
 
     impl Operand {
         pub fn literal(&self) -> isize {
@@ -76,6 +79,14 @@ pub mod computer {
         }
     }
 
+    impl Display for CommboOperand {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{:?}", self)
+        }
+    }
+
+    #[repr(u8)]
+    #[derive(Debug)]
     pub enum Instruction {
         // The adv instruction (opcode 0) performs division. The numerator is the value in the A register.
         // The denominator is found by raising 2 to the power of the instruction's combo operand.
@@ -112,6 +123,12 @@ pub mod computer {
         // The cdv instruction (opcode 7) works exactly like the adv instruction except that the result is
         // stored in the C register. (The numerator is still read from the A register.)
         CDV,
+    }
+
+    impl Display for Instruction {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{:?}", self)
+        }
     }
 
     impl From<OpCode> for Instruction {
@@ -157,11 +174,13 @@ pub mod computer {
             }
         }
 
-        fn read(&self) -> (Instruction, Operand) {
-            (
-                self.program[self.ip].into(),
-                Operand(self.program[self.ip + 1]),
-            )
+        pub fn read(&self) -> Option<(Instruction, Operand)> {
+            (self.ip >= self.program.len()).not().then(|| {
+                (
+                    self.program[self.ip].into(),
+                    Operand(self.program[self.ip + 1]),
+                )
+            })
         }
 
         pub fn try_set_program<I, O>(&mut self, program: I) -> Result<(), OpcodeParseError<O>>
@@ -177,11 +196,9 @@ pub mod computer {
         }
 
         pub fn step(&mut self) -> InstructionResult {
-            if self.ip >= self.program.len() {
+            let Some((instruction, operand)) = self.read() else {
                 return InstructionResult::Halt;
-            }
-
-            let (instruction, operand) = self.read();
+            };
 
             self.ip += 2;
 
@@ -193,25 +210,26 @@ pub mod computer {
                     self.b ^= operand.literal();
                 }
                 Instruction::BST => {
-                    self.b = operand.combo_value(self) % 8;
+                    self.b = operand.combo_value(self) & 7;
                 }
                 Instruction::JNZ => {
                     if self.a != 0 {
                         self.ip = operand.literal().try_into().unwrap();
-                        return InstructionResult::Nothing;
                     }
                 }
                 Instruction::BXC => {
                     self.b ^= self.c;
                 }
                 Instruction::OUT => {
-                    return InstructionResult::Output((operand.combo_value(self) % 8) as u8);
+                    return InstructionResult::Output(
+                        (operand.combo_value(self) & 7).try_into().unwrap(),
+                    );
                 }
                 Instruction::BDV => {
-                    self.b /= 2isize.pow(operand.combo_value(self).try_into().unwrap());
+                    self.b = self.a / 2isize.pow(operand.combo_value(self).try_into().unwrap());
                 }
                 Instruction::CDV => {
-                    self.c /= 2isize.pow(operand.combo_value(self).try_into().unwrap());
+                    self.c = self.a / 2isize.pow(operand.combo_value(self).try_into().unwrap());
                 }
             }
             InstructionResult::Nothing
@@ -301,17 +319,42 @@ mod part1 {
     pub fn calculate(input: &str) -> String {
         let mut computer = computer::parse(input).expect("Could not parse computer");
 
-        println!("Before:\n{computer}");
+        // println!("Before:\n{computer}");
 
-        let out = computer
+        // let mut output: Vec<String> = vec![];
+
+        // let mut i = 0;
+        // loop {
+        //     i += 1;
+        //     let Some((instruction, operand)) = computer.read() else {
+        //         break;
+        //     };
+        //     let combo = operand.combo();
+        //     let literal = operand.literal();
+        //     println!("---\nAfter Step {i}:");
+        //     println!(" Instruction: {instruction}");
+        //     println!(" Combo: {combo}");
+        //     println!(" Literal: {literal}");
+
+        //     let result = computer.step();
+
+        //     match result {
+        //         computer::InstructionResult::Output(n) => {
+        //             println!("!!Output: {n}");
+        //             output.push(n.to_string())
+        //         }
+        //         computer::InstructionResult::Nothing => {}
+        //         computer::InstructionResult::Halt => break,
+        //     }
+        //     println!("{computer}");
+        //     println!("Total output: {}", output.join(","));
+        // }
+
+        computer
             .iter_output()
             .map(|n| n.to_string())
             .collect::<Vec<String>>()
-            .join(",");
-
-        println!("After:\n{computer}");
-
-        out
+            .join(",")
     }
 
     #[allow(clippy::field_reassign_with_default)]
