@@ -426,23 +426,38 @@ mod part2 {
     use super::*;
 
     pub fn calculate(input: &str) -> isize {
+        use rayon::prelude::*;
         let computer = computer::parse(input).expect("Could not parse computer");
         let target = computer.program.iter().map(|op| op.0).collect::<Vec<_>>();
         println!("{:?}", target);
 
-        let mut a = 394200000;
-        loop {
-            if a % 100_000 == 0 {
-                println!("a:{a}");
-            }
-            let mut computer = computer.clone();
-            computer.a = a;
-            if computer.output() == target {
-                return a;
-            }
+        (1696600000..isize::MAX)
+            .into_par_iter()
+            .find_first(move |a| {
+                if a % 100_000 == 0 {
+                    println!("a:{a}");
+                }
+                let mut computer = computer.clone();
+                computer.a = *a;
+                computer.output() == target
+            })
+            .unwrap()
 
-            a += 1;
-        }
+        // let cores = std::thread::available_parallelism().unwrap();
+        // println!("Available cores: {cores}");
+
+        // loop {
+        //     if a % 100_000 == 0 {
+        //         println!("a:{a}");
+        //     }
+        //     let mut computer = computer.clone();
+        //     computer.a = a;
+        //     if computer.output() == target {
+        //         return a;
+        //     }
+
+        //     a += 1;
+        // }
     }
 
     #[cfg(test)]
