@@ -204,7 +204,7 @@ pub mod computer {
 
             match instruction {
                 Instruction::ADV => {
-                    self.a /= 2isize.pow(operand.combo_value(self).try_into().unwrap());
+                    self.a >>= operand.combo_value(self);
                 }
                 Instruction::BXL => {
                     self.b ^= operand.literal();
@@ -226,10 +226,10 @@ pub mod computer {
                     );
                 }
                 Instruction::BDV => {
-                    self.b = self.a / 2isize.pow(operand.combo_value(self).try_into().unwrap());
+                    self.b = self.a >> operand.combo_value(self);
                 }
                 Instruction::CDV => {
-                    self.c = self.a / 2isize.pow(operand.combo_value(self).try_into().unwrap());
+                    self.c = self.a >> operand.combo_value(self);
                 }
             }
             InstructionResult::Nothing
@@ -371,6 +371,12 @@ mod part1 {
         }
 
         #[test]
+        fn test_input() {
+            let input = aoc::cli::input_string("day17.txt");
+            assert_eq!(calculate(&input), "1,2,3,1,3,2,5,3,1");
+        }
+
+        #[test]
         fn test_simple_1() {
             let mut computer = Computer::default();
             computer.c = 9;
@@ -426,42 +432,58 @@ mod part2 {
     use super::*;
 
     pub fn calculate(input: &str) -> isize {
-        use rayon::prelude::*;
         let computer = computer::parse(input).expect("Could not parse computer");
         let target = computer.program.iter().map(|op| op.0).collect::<Vec<_>>();
-        println!("{:?}", target);
+        // println!("Target: {:?}", target);
 
-        (1696600000..isize::MAX)
-            .into_par_iter()
-            .find_first(move |a| {
+        /*
+        2,4, 1,5, 7,5, 1,6, 0,3, 4,3, 5,5, 3,0
+
+        2,4 | bst a     | b = a & 7      # take last 3 bits of a into b
+        1,5 | bxl 5     | b = b ^ 5      # manipulate first 3 bits of b
+        7,5 | cdv b     | c = a >> b     # shift a up to 7 bits along
+        1,6 | bxl 6     | b = b ^ 6      # manipulate first 3 bits of b again
+        0,3 | adv 3     | a = a >> 3     # drop bottom 3 bits of a
+        4,3 | bxc _     | b = b ^ c      # using last 3 bits of a and up the next 7 of a (i.e. last 10 bits) manipulate b again
+        5,5 | out b     |                # output is based on up to the last 10 bits of a
+        3,0 | jmp 0
+        */
+
+        // Find all the combos of the first 10 bits that produce the first output
+        let saved: Vec<isize> = (0..2 << 9)
+            .filter(|a| {
                 let mut computer = computer.clone();
                 computer.a = *a;
-                let mut count = 0;
-                for output in computer.iter_output() {
-                    if output != target[count] {
-                        return false;
-                    }
-                    count += 1;
-                }
-                count == target.len()
+                let output = computer.iter_output().next().unwrap();
+                output == target[0]
             })
+            .collect();
+
+        // Now go up by three bits at a time, finding all the next 3 bits that produce the next
+        // value in the output
+        target
+            .iter()
+            .enumerate()
+            .skip(1)
+            .fold(saved, |saved, (pos, &target)| {
+                let mut next = vec![];
+                for consider in saved {
+                    for first3bits in 0..1 << 3 {
+                        let a = (first3bits << (7 + 3 * pos)) | consider;
+                        let mut computer = computer.clone();
+                        computer.a = a;
+                        let output = computer.iter_output().nth(pos).unwrap_or(u8::MAX);
+                        if output == target {
+                            next.push(a);
+                        }
+                    }
+                }
+                next
+            })
+            .iter()
+            .min()
+            .cloned()
             .unwrap()
-
-        // let cores = std::thread::available_parallelism().unwrap();
-        // println!("Available cores: {cores}");
-
-        // loop {
-        //     if a % 100_000 == 0 {
-        //         println!("a:{a}");
-        //     }
-        //     let mut computer = computer.clone();
-        //     computer.a = a;
-        //     if computer.output() == target {
-        //         return a;
-        //     }
-
-        //     a += 1;
-        // }
     }
 
     #[cfg(test)]
