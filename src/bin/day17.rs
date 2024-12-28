@@ -235,7 +235,7 @@ pub mod computer {
             InstructionResult::Nothing
         }
 
-        pub fn iter_output<'a>(&'a mut self) -> impl Iterator<Item = u8> + 'a {
+        pub fn iter_output(&mut self) -> impl Iterator<Item = u8> + '_ {
             self.flatten()
         }
 
