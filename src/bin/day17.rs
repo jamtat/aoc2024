@@ -434,9 +434,6 @@ mod part2 {
         (1696600000..isize::MAX)
             .into_par_iter()
             .find_first(move |a| {
-                if a % 100_000 == 0 {
-                    println!("a:{a}");
-                }
                 let mut computer = computer.clone();
                 computer.a = *a;
                 let mut count = 0;
