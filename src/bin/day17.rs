@@ -235,7 +235,7 @@ pub mod computer {
             InstructionResult::Nothing
         }
 
-        pub fn iter_output(&mut self) -> impl Iterator<Item = u8> + use<'_> {
+        pub fn iter_output<'a>(&'a mut self) -> impl Iterator<Item = u8> + 'a {
             self.flatten()
         }
 
@@ -439,7 +439,14 @@ mod part2 {
                 }
                 let mut computer = computer.clone();
                 computer.a = *a;
-                computer.output() == target
+                let mut count = 0;
+                for output in computer.iter_output() {
+                    if output != target[count] {
+                        return false;
+                    }
+                    count += 1;
+                }
+                count == target.len()
             })
             .unwrap()
 
