@@ -8,7 +8,7 @@ pub mod computer {
     };
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    pub struct OpCode(u8);
+    pub struct OpCode(pub u8);
 
     #[derive(Debug, Clone)]
     pub enum OpcodeParseError<T> {
@@ -421,12 +421,28 @@ mod part1 {
         }
     }
 }
-/*
+
 mod part2 {
     use super::*;
 
-    pub fn calculate(input: &str) -> usize {
-        0
+    pub fn calculate(input: &str) -> isize {
+        let computer = computer::parse(input).expect("Could not parse computer");
+        let target = computer.program.iter().map(|op| op.0).collect::<Vec<_>>();
+        println!("{:?}", target);
+
+        let mut a = 394200000;
+        loop {
+            if a % 100_000 == 0 {
+                println!("a:{a}");
+            }
+            let mut computer = computer.clone();
+            computer.a = a;
+            if computer.output() == target {
+                return a;
+            }
+
+            a += 1;
+        }
     }
 
     #[cfg(test)]
@@ -435,17 +451,17 @@ mod part2 {
 
         #[test]
         fn test_example() {
-            let input = aoc::example::example_string("day17.txt");
-            assert_eq!(calculate(&input), 0);
+            let input = aoc::example::example_string("day17_2.txt");
+            assert_eq!(calculate(&input), 117440);
         }
     }
 }
-*/
+
 fn main() {
     let cli = aoc::cli::parse();
 
     let input = cli.input_string();
 
     println!("Part 1: {}", part1::calculate(&input));
-    // println!("Part 2: {}", part2::calculate(&input));
+    println!("Part 2: {}", part2::calculate(&input));
 }
