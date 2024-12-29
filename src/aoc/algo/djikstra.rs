@@ -101,6 +101,7 @@ where
 {
     costs: HashMap<S::Position, S::Cost>,
     queue: BinaryHeap<QueueState<S>>,
+    depriority: Option<BinaryHeap<QueueState<S>>>,
     is_end: F,
     min_cost: Option<S::Cost>,
 }
@@ -115,14 +116,27 @@ where
         Self {
             costs: [(start_state.position(), start_state.cost())].into(),
             queue: [start_state].into(),
+            depriority: Some(BinaryHeap::new()),
             is_end,
             min_cost: None,
         }
     }
 
     fn add_state(&mut self, state: QueueState<S>) {
-        self.costs.insert(state.position(), state.cost());
-        self.queue.push(state);
+        let cost = state.cost();
+        if let Some(existing_cost) = self.costs.insert(state.position(), cost) {
+            if cost < existing_cost || self.depriority.is_none() {
+                self.queue.push(state);
+            } else {
+                self.depriority.as_mut().unwrap().push(state);
+            }
+        } else {
+            self.queue.push(state);
+        }
+    }
+
+    pub fn min_cost(&self) -> Option<S::Cost> {
+        self.min_cost
     }
 
     fn next_state(&mut self) -> Option<QueueState<S>> {
@@ -154,6 +168,9 @@ where
                     Some(min_cost) => (cost == min_cost).then_some(state),
                     None => {
                         self.min_cost = Some(cost);
+                        // Now we've found the min cost we need to take everything from
+                        // the depriority bin and push it into the queue
+                        self.queue.append(&mut self.depriority.take().unwrap());
                         Some(state)
                     }
                 };

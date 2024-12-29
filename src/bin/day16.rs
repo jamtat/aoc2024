@@ -209,11 +209,11 @@ mod part1 {
             assert_eq!(calculate(&input), 11048);
         }
 
-        // #[test]
-        // fn test_input() {
-        //     let input = aoc::cli::input_string("day16.txt");
-        //     assert_eq!(calculate(&input), 143564);
-        // }
+        #[test]
+        fn test_input() {
+            let input = aoc::cli::input_string("day16.txt");
+            assert_eq!(calculate(&input), 143564);
+        }
     }
 }
 
@@ -292,11 +292,11 @@ mod part2 {
             assert_eq!(calculate(&input), 64);
         }
 
-        // #[test]
-        // fn test_input() {
-        //     let input = aoc::cli::input_string("day16.txt");
-        //     assert_eq!(calculate(&input), 593);
-        // }
+        #[test]
+        fn test_input() {
+            let input = aoc::cli::input_string("day16.txt");
+            assert_eq!(calculate(&input), 593);
+        }
     }
 }
 
