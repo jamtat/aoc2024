@@ -4,12 +4,94 @@ use std::{
 };
 
 pub trait DjikstraState: Sized + PartialOrd + Ord + PartialEq + Eq {
-    type Position: Sized + PartialEq + Eq + Hash;
-    type Cost: Sized + PartialOrd + Copy;
+    type Position: Sized + Clone + PartialEq + Eq + Hash;
+    type Cost: Sized + PartialOrd + Ord + Copy;
 
     fn cost(&self) -> Self::Cost;
     fn position(&self) -> Self::Position;
     fn next(&self) -> Vec<Self>;
+}
+
+pub struct QueueState<S>
+where
+    S: DjikstraState,
+{
+    state: S,
+    path: Vec<S::Position>,
+}
+
+impl<S> QueueState<S>
+where
+    S: DjikstraState,
+{
+    pub fn cost(&self) -> S::Cost {
+        self.state.cost()
+    }
+
+    pub fn position(&self) -> S::Position {
+        self.state.position()
+    }
+
+    pub fn path(&self) -> &[S::Position] {
+        &self.path
+    }
+
+    pub fn add(&self, state: S) -> Self {
+        let p = state.position();
+        Self {
+            state,
+            path: self.path.iter().cloned().chain([p]).collect(),
+        }
+    }
+
+    pub fn next(&self) -> Vec<Self> {
+        self.state.next().into_iter().map(|s| self.add(s)).collect()
+    }
+}
+
+impl<S> Ord for QueueState<S>
+where
+    S: DjikstraState,
+{
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other
+            .cost()
+            .cmp(&self.cost())
+            .then_with(|| other.state.cmp(&self.state))
+    }
+}
+
+impl<S> PartialOrd for QueueState<S>
+where
+    S: DjikstraState,
+{
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<S> PartialEq for QueueState<S>
+where
+    S: DjikstraState,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.state == other.state && self.path == other.path
+    }
+}
+
+impl<S> Eq for QueueState<S> where S: DjikstraState {}
+
+impl<S> From<S> for QueueState<S>
+where
+    S: DjikstraState,
+{
+    fn from(state: S) -> Self {
+        let pos = state.position();
+        Self {
+            state,
+            path: vec![pos],
+        }
+    }
 }
 
 pub struct Djikstra<S, F>
@@ -18,7 +100,7 @@ where
     F: Fn(&S) -> bool,
 {
     costs: HashMap<S::Position, S::Cost>,
-    heap: BinaryHeap<S>,
+    queue: BinaryHeap<QueueState<S>>,
     is_end: F,
     min_cost: Option<S::Cost>,
 }
@@ -29,25 +111,30 @@ where
     F: Fn(&S) -> bool,
 {
     pub fn new(start: S, is_end: F) -> Self {
+        let start_state: QueueState<S> = start.into();
         Self {
-            costs: [(start.position(), start.cost())].into(),
-            heap: [start].into(),
+            costs: [(start_state.position(), start_state.cost())].into(),
+            queue: [start_state].into(),
             is_end,
             min_cost: None,
         }
     }
 
-    fn add_state(&mut self, state: S) {
+    fn add_state(&mut self, state: QueueState<S>) {
         self.costs.insert(state.position(), state.cost());
-        self.heap.push(state);
+        self.queue.push(state);
     }
 
-    fn next_state(&mut self) -> Option<S> {
-        self.heap.pop()
+    fn next_state(&mut self) -> Option<QueueState<S>> {
+        self.queue.pop()
     }
 
-    fn existing_cost(&self, state: &S) -> Option<S::Cost> {
+    fn existing_cost(&self, state: &QueueState<S>) -> Option<S::Cost> {
         self.costs.get(&state.position()).copied()
+    }
+
+    fn is_end(&self, state: &QueueState<S>) -> bool {
+        (self.is_end)(&state.state)
     }
 }
 
@@ -56,13 +143,13 @@ where
     S: DjikstraState,
     F: Fn(&S) -> bool,
 {
-    type Item = S;
+    type Item = QueueState<S>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(state) = self.next_state() {
             let cost = state.cost();
 
-            if (self.is_end)(&state) {
+            if self.is_end(&state) {
                 return match self.min_cost {
                     Some(min_cost) => (cost == min_cost).then_some(state),
                     None => {

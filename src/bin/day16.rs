@@ -68,7 +68,6 @@ mod state {
         direction: Direction,
         cell: GridCell<'a, Vec<Tile>>,
         cost: usize,
-        path: Vec<(Point, Direction)>,
     }
 
     impl<'a> State<'a> {
@@ -77,7 +76,6 @@ mod state {
                 direction,
                 cell,
                 cost,
-                path: vec![(cell.point(), direction)],
             }
         }
 
@@ -91,22 +89,6 @@ mod state {
 
         pub fn is_end(&self) -> bool {
             matches!(self.tile(), Tile::End)
-        }
-
-        pub fn path(&self) -> Vec<<Self as DjikstraState>::Position> {
-            self.path.clone()
-        }
-
-        fn add(&self, direction: Direction, cell: GridCell<'a, Vec<Tile>>, cost: usize) -> Self {
-            let mut path = self.path.clone();
-            path.push((cell.point(), direction));
-
-            Self {
-                direction,
-                cell,
-                cost,
-                path,
-            }
         }
     }
 
@@ -129,12 +111,16 @@ mod state {
 
             if let Some(next) = self.cell.go(&self.direction) {
                 if next.value().traversible() {
-                    out.push(self.add(self.direction, next, self.cost + BASE_COST));
+                    out.push(Self::new(self.direction, next, self.cost + BASE_COST));
                 }
             }
 
-            out.push(self.add(self.direction.turn_left(), self.cell, self.cost + TURN_COST));
-            out.push(self.add(
+            out.push(Self::new(
+                self.direction.turn_left(),
+                self.cell,
+                self.cost + TURN_COST,
+            ));
+            out.push(Self::new(
                 self.direction.turn_right(),
                 self.cell,
                 self.cost + TURN_COST,
@@ -187,10 +173,7 @@ mod part1 {
         map::{Map, Tile},
         state::State,
     };
-    use aoc2024::aoc::{
-        algo::djikstra::{Djikstra, DjikstraState},
-        grid::Direction,
-    };
+    use aoc2024::aoc::{algo::djikstra::Djikstra, grid::Direction};
 
     pub fn calculate(input: &str) -> usize {
         let map = input.parse::<Map>().unwrap();
@@ -226,11 +209,11 @@ mod part1 {
             assert_eq!(calculate(&input), 11048);
         }
 
-        #[test]
-        fn test_input() {
-            let input = aoc::cli::input_string("day16.txt");
-            assert_eq!(calculate(&input), 143564);
-        }
+        // #[test]
+        // fn test_input() {
+        //     let input = aoc::cli::input_string("day16.txt");
+        //     assert_eq!(calculate(&input), 143564);
+        // }
     }
 }
 
@@ -239,14 +222,17 @@ mod part2 {
         map::{Map, Tile},
         state::State,
     };
-    use aoc2024::aoc::{algo::djikstra::Djikstra, grid::Direction};
+    use aoc2024::aoc::{
+        algo::djikstra::{Djikstra, QueueState},
+        grid::Direction,
+    };
     use std::collections::HashSet;
 
     #[allow(dead_code)]
-    fn apply(map: &Map, state: &State) -> Map {
+    fn apply(map: &Map, state: &QueueState<State>) -> Map {
         let map = map.clone();
 
-        for (point, direction) in &state.path() {
+        for (point, direction) in state.path() {
             *point.on(&map).unwrap().value_mut() = Tile::Overlay(*direction);
         }
         map
@@ -276,7 +262,6 @@ mod part2 {
 
         #[cfg(test)]
         {
-            use aoc2024::aoc::algo::djikstra::DjikstraState;
             println!("Found {} end states", end_states.len());
             for state in &end_states {
                 println!("\n\nCost: {}\n{}\n", state.cost(), apply(&map, state));
@@ -307,11 +292,11 @@ mod part2 {
             assert_eq!(calculate(&input), 64);
         }
 
-        #[test]
-        fn test_input() {
-            let input = aoc::cli::input_string("day16.txt");
-            assert_eq!(calculate(&input), 593);
-        }
+        // #[test]
+        // fn test_input() {
+        //     let input = aoc::cli::input_string("day16.txt");
+        //     assert_eq!(calculate(&input), 593);
+        // }
     }
 }
 

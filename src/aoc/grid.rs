@@ -12,7 +12,7 @@ pub struct Point {
 }
 
 impl Point {
-    pub fn new(x: usize, y: usize) -> Self {
+    pub const fn new(x: usize, y: usize) -> Self {
         Point { x, y }
     }
 
@@ -111,6 +111,15 @@ impl Display for Point {
     }
 }
 
+impl<T> From<(T, T)> for Point
+where
+    T: Into<usize>,
+{
+    fn from((x, y): (T, T)) -> Self {
+        Point::new(x.into(), y.into())
+    }
+}
+
 pub struct Grid<T: Index<usize>> {
     width: usize,
     height: usize,
@@ -179,16 +188,23 @@ impl<T: Index<usize>> Grid<T> {
 }
 
 impl<U: Copy> Grid<Vec<U>> {
-    pub fn fill(width: usize, height: usize, val: U) -> Self
-    where
-        U: Copy,
-    {
+    pub fn fill(width: usize, height: usize, val: U) -> Self {
         Grid::new(
             width,
             height,
-            std::iter::repeat(val)
+            std::iter::repeat(val).take(width * height).collect(),
+        )
+    }
+}
+
+impl<U: Default> Grid<Vec<U>> {
+    pub fn default(width: usize, height: usize) -> Self {
+        Grid::new(
+            width,
+            height,
+            std::iter::repeat_with(Default::default)
                 .take(width * height)
-                .collect::<Vec<U>>(),
+                .collect(),
         )
     }
 }
