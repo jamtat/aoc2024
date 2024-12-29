@@ -1,6 +1,6 @@
 use aoc2024::aoc::{
     self,
-    algo::djikstra::DjikstraState,
+    algo::djikstra::{Djikstra, DjikstraState},
     grid::{Grid, GridCell, Point},
 };
 use std::fmt::{Display, Write};
@@ -35,7 +35,7 @@ mod state {
     use aoc::grid::Direction;
 
     use super::*;
-
+    #[derive(Clone)]
     pub struct MapDState<'a> {
         cell: GridCell<'a, Vec<Tile>>,
         cost: usize,
@@ -100,20 +100,19 @@ mod state {
     }
 }
 
+fn parse_input(input: &str) -> Vec<Point> {
+    input
+        .lines()
+        .filter_map(|l| {
+            let (x, y) = l.split_once(',')?;
+            Some((x.parse::<usize>().ok()?, y.parse::<usize>().ok()?).into())
+        })
+        .collect()
+}
+
 mod part1 {
     use super::*;
-    use aoc::algo::djikstra::Djikstra;
     use state::MapDState;
-
-    fn parse_input(input: &str) -> Vec<Point> {
-        input
-            .lines()
-            .filter_map(|l| {
-                let (x, y) = l.split_once(',')?;
-                Some((x.parse::<usize>().ok()?, y.parse::<usize>().ok()?).into())
-            })
-            .collect()
-    }
 
     pub fn calculate(input: &str, width: usize, height: usize, count: usize) -> usize {
         let points = &parse_input(input);
@@ -151,12 +150,46 @@ mod part1 {
         }
     }
 }
-/*
+
 mod part2 {
     use super::*;
+    use state::MapDState;
+    use std::collections::HashSet;
 
-    pub fn calculate(input: &str) -> usize {
-        0
+    pub fn calculate(input: &str, width: usize, height: usize) -> String {
+        let points = &parse_input(input);
+        let map = Map::default(width, height);
+
+        let start = MapDState::new(map.cell_at(0, 0).unwrap(), 0);
+        let end_point = Point::new(width - 1, height - 1);
+        let is_end = |state: &MapDState| state.point() == end_point;
+        for point in &points[..1024] {
+            // We know from part one it's fine to dump these points in
+            *point.on(&map).unwrap().value_mut() = Tile::Obstruction;
+        }
+
+        // Get all the points from the last path
+        let mut last_points: HashSet<_> = Djikstra::new(start.clone(), is_end)
+            .next()
+            .unwrap()
+            .path()
+            .iter()
+            .cloned()
+            .collect();
+
+        for point in &points[1024..] {
+            *point.on(&map).unwrap().value_mut() = Tile::Obstruction;
+            // Only bother to check for a new path if this one becomes obstructed
+            if last_points.contains(point) {
+                if let Some(end_state) = Djikstra::new(start.clone(), is_end).next() {
+                    last_points = end_state.path().iter().cloned().collect();
+                } else {
+                    return format!("{},{}", point.x, point.y);
+                }
+            }
+        }
+
+        String::new()
     }
 
     #[cfg(test)]
@@ -166,16 +199,18 @@ mod part2 {
         #[test]
         fn test_example() {
             let input = aoc::example::example_string("day18.txt");
-            assert_eq!(calculate(&input), 0);
+            assert_eq!(calculate(&input, 7, 7), "6,1");
         }
     }
 }
-*/
+
 fn main() {
     let cli = aoc::cli::parse();
 
     let input = cli.input_string();
 
-    println!("Part 1: {}", part1::calculate(&input, 71, 71, 1024));
-    // println!("Part 2: {}", part2::calculate(&input));
+    const SIZE: usize = 71;
+
+    println!("Part 1: {}", part1::calculate(&input, SIZE, SIZE, 1024));
+    println!("Part 2: {}", part2::calculate(&input, SIZE, SIZE));
 }
