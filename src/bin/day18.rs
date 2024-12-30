@@ -128,7 +128,7 @@ mod part1 {
         let end_point = Point::new(width - 1, height - 1);
         let is_end = |state: &MapDState| state.point() == end_point;
 
-        let end_state = Djikstra::new(start, is_end).next().unwrap();
+        let end_state = Djikstra::new([start], is_end).next().unwrap();
 
         for point in end_state.path() {
             *point.on(&map).unwrap().value_mut() = Tile::Overlay;
@@ -156,20 +156,20 @@ mod part2 {
     use state::MapDState;
     use std::collections::HashSet;
 
-    pub fn calculate(input: &str, width: usize, height: usize) -> String {
+    pub fn calculate(input: &str, width: usize, height: usize, slice_point: usize) -> String {
         let points = &parse_input(input);
         let map = Map::default(width, height);
 
         let start = MapDState::new(map.cell_at(0, 0).unwrap(), 0);
         let end_point = Point::new(width - 1, height - 1);
         let is_end = |state: &MapDState| state.point() == end_point;
-        for point in &points[..1024] {
+        for point in &points[..slice_point] {
             // We know from part one it's fine to dump these points in
             *point.on(&map).unwrap().value_mut() = Tile::Obstruction;
         }
 
         // Get all the points from the last path
-        let mut last_points: HashSet<_> = Djikstra::new(start.clone(), is_end)
+        let mut last_points: HashSet<_> = Djikstra::new([start.clone()], is_end)
             .next()
             .unwrap()
             .path()
@@ -177,11 +177,11 @@ mod part2 {
             .cloned()
             .collect();
 
-        for point in &points[1024..] {
+        for point in &points[slice_point..] {
             *point.on(&map).unwrap().value_mut() = Tile::Obstruction;
             // Only bother to check for a new path if this one becomes obstructed
             if last_points.contains(point) {
-                if let Some(end_state) = Djikstra::new(start.clone(), is_end).next() {
+                if let Some(end_state) = Djikstra::new([start.clone()], is_end).next() {
                     last_points = end_state.path().iter().cloned().collect();
                 } else {
                     return format!("{},{}", point.x, point.y);
@@ -199,7 +199,7 @@ mod part2 {
         #[test]
         fn test_example() {
             let input = aoc::example::example_string("day18.txt");
-            assert_eq!(calculate(&input, 7, 7), "6,1");
+            assert_eq!(calculate(&input, 7, 7, 12), "6,1");
         }
     }
 }
@@ -212,5 +212,5 @@ fn main() {
     const SIZE: usize = 71;
 
     println!("Part 1: {}", part1::calculate(&input, SIZE, SIZE, 1024));
-    println!("Part 2: {}", part2::calculate(&input, SIZE, SIZE));
+    println!("Part 2: {}", part2::calculate(&input, SIZE, SIZE, 1024));
 }

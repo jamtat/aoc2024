@@ -185,7 +185,7 @@ mod part1 {
             0,
         );
 
-        Djikstra::new(start_state, State::is_end)
+        Djikstra::new([start_state], State::is_end)
             .next()
             .expect("Should find an end state")
             .cost()
@@ -233,7 +233,7 @@ mod part2 {
         let map = map.clone();
 
         for (point, direction) in state.path() {
-            *point.on(&map).unwrap().value_mut() = Tile::Overlay(*direction);
+            *point.on(&map).unwrap().value_mut() = Tile::Overlay(direction);
         }
         map
     }
@@ -248,7 +248,7 @@ mod part2 {
             0,
         );
 
-        let end_states = Djikstra::new(start_state, State::is_end).collect::<Vec<_>>();
+        let end_states = Djikstra::new([start_state], State::is_end).collect::<Vec<_>>();
 
         let points: HashSet<_> = end_states
             .iter()
